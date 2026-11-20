@@ -1,18 +1,16 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 
-const route = useRoute()
 const router = useRouter()
-const clusterId = computed(() => Number(route.params.clusterId))
 const view = ref('table')
 const hosts = ref([])
 const q = ref('')
 const error = ref('')
-const form = ref({ name: '', ip: '', ssh_port: 22, labels: '', remark: '' })
 const showAdd = ref(false)
 const saving = ref(false)
+const form = ref({ name: '', ip: '', ssh_port: 22, labels: '', remark: '' })
 
 const filtered = computed(() => {
   const s = q.value.trim()
@@ -44,19 +42,13 @@ async function addHost() {
 }
 
 async function remove(id) {
-  if (!confirm('确认删除该主机？')) return
+  if (!confirm('确认删除主机？备注将写入审计（一期本地确认）。')) return
   try {
     await api.deleteHost(id)
     await load()
   } catch (e) {
     error.value = e.message
   }
-}
-
-function loadColor(h) {
-  const tags = (h.labels || '').toLowerCase()
-  if (tags.includes('be') || tags.includes('fe')) return 'ok-node'
-  return ''
 }
 
 onMounted(load)
@@ -66,15 +58,15 @@ onMounted(load)
   <section class="panel">
     <div class="panel-title">
       <div>
-        <h2>主机管理</h2>
-        <p class="muted" style="margin:6px 0 0">表格 + 拓扑双视图；Doris FE/BE 通过 labels 标记</p>
+        <h2>主机资源池</h2>
+        <p class="muted" style="margin:6px 0 0">全局资源，不绑定某实例；编排时按需挑选。Agent 离线标红。</p>
       </div>
       <div class="toolbar">
-        <button class="btn" :class="{ primary: view === 'table' }" @click="view = 'table'">表格视图</button>
-        <button class="btn" :class="{ primary: view === 'topo' }" @click="view = 'topo'">拓扑视图</button>
+        <button class="btn" :class="{ primary: view === 'table' }" @click="view = 'table'">表格</button>
+        <button class="btn" :class="{ primary: view === 'topo' }" @click="view = 'topo'">拓扑</button>
         <input v-model="q" class="select" style="width:160px" placeholder="搜索主机" />
         <button class="btn ghost" @click="load">刷新</button>
-        <button class="btn primary" @click="showAdd = !showAdd">添加主机</button>
+        <button class="btn primary" @click="showAdd = !showAdd">纳管主机</button>
       </div>
     </div>
 
@@ -93,19 +85,20 @@ onMounted(load)
     <table class="table" v-if="view === 'table'">
       <thead>
         <tr>
-          <th>主机名</th><th>IP</th><th>Agent</th><th>标签</th><th>备注</th><th>操作</th>
+          <th>主机名</th><th>IP</th><th>Agent</th><th>标签</th><th>状态</th><th>操作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="h in filtered" :key="h.id">
           <td>{{ h.name }}</td>
           <td>{{ h.ip }}:{{ h.ssh_port || 22 }}</td>
-          <td><span class="status-pill healthy">在线</span></td>
+          <td><span class="status-pill healthy">正常</span></td>
           <td>{{ h.labels || '-' }}</td>
-          <td>{{ h.remark || '-' }}</td>
+          <td><span class="status-pill" :class="h.enabled === false ? 'unknown' : 'healthy'">{{ h.enabled === false ? '禁用' : '空闲' }}</span></td>
           <td>
             <div class="toolbar">
-              <button class="btn" @click="router.push(`/c/${clusterId}/hosts/${h.id}`)">详情</button>
+              <button class="btn" @click="router.push(`/hosts/${h.id}`)">详情</button>
+              <button class="btn" disabled>安装 Agent</button>
               <button class="btn danger" @click="remove(h.id)">删除</button>
             </div>
           </td>
@@ -114,14 +107,13 @@ onMounted(load)
     </table>
 
     <div class="topo" v-else>
-      <div class="topo-node" :class="loadColor(h)" v-for="h in filtered" :key="h.id" @click="router.push(`/c/${clusterId}/hosts/${h.id}`)">
+      <div class="topo-node ok-node" v-for="h in filtered" :key="h.id" @click="router.push(`/hosts/${h.id}`)">
         <div class="topo-title">{{ h.name }}</div>
         <div class="topo-id">{{ h.ip }}</div>
-        <div class="topo-deps">角色标签：{{ h.labels || '未标记' }}</div>
+        <div class="topo-deps">{{ h.labels || '未打标签' }}</div>
       </div>
     </div>
-
-    <div class="empty" v-if="!filtered.length">暂无主机，请添加后用于 Doris FE/BE 分配。</div>
+    <div class="empty" v-if="!filtered.length">暂无主机</div>
     <p class="error" v-if="error">{{ error }}</p>
   </section>
 </template>

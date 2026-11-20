@@ -7,80 +7,56 @@ import { api, getUser, setToken, setUser } from './api/client'
 const route = useRoute()
 const router = useRouter()
 const user = ref(getUser())
-const clusters = ref([])
 const sideFilter = ref('')
 
 const isAuth = computed(() => ['/login', '/setup'].includes(route.path))
-const clusterId = computed(() => route.params.clusterId ? Number(route.params.clusterId) : null)
-const inCluster = computed(() => !!clusterId.value)
-const inAdmin = computed(() => route.path.startsWith('/admin'))
 
-const clusterNav = [
-  { path: 'overview', label: '集群总览' },
-  { path: 'services', label: '服务管理' },
-  { path: 'hosts', label: '主机管理' },
-  { path: 'alerts', label: '告警中心' },
-  { path: 'logs', label: '日志检索' },
-  { path: 'parcels', label: '版本包管理' },
-  { path: 'tasks', label: '任务中心' },
-  { path: 'client', label: '客户端配置' },
-  { path: 'config', label: '配置中心' },
+const primaryNav = [
+  { path: '/workbench', label: '工作台' },
+  { path: '/orchestrate', label: '组件编排' },
+  { path: '/instances', label: '实例管理' },
+  { path: '/tasks', label: '部署任务' },
+  { path: '/hosts', label: '主机资源' },
+  { path: '/plugins', label: '插件市场' },
+]
+
+const observeNav = [
+  { path: '/alerts', label: '告警中心' },
+  { path: '/logs', label: '日志检索' },
+  { path: '/monitor', label: '监控大盘' },
 ]
 
 const adminNav = [
-  { path: '/admin/users', label: '人员关系' },
+  { path: '/admin/users', label: '用户权限' },
   { path: '/admin/audit', label: '审计日志' },
   { path: '/admin/settings', label: '平台设置' },
 ]
 
-const sideTitle = computed(() => {
-  if (inAdmin.value) return '系统管理'
-  if (inCluster.value) return '集群功能'
-  return '平台入口'
-})
-
-const sideItems = computed(() => {
-  let items = []
-  if (inAdmin.value) items = adminNav
-  else if (inCluster.value) {
-    items = clusterNav.map((n) => ({
-      path: `/c/${clusterId.value}/${n.path}`,
-      label: n.label,
-    }))
-  } else {
-    items = [
-      { path: '/clusters', label: '集群选择' },
-      { path: '/admin/users', label: '系统管理' },
-    ]
-  }
+const sideGroups = computed(() => {
   const q = sideFilter.value.trim()
-  return q ? items.filter((i) => i.label.includes(q)) : items
+  const filter = (items) => (q ? items.filter((i) => i.label.includes(q)) : items)
+  return [
+    { title: '主流程', items: filter(primaryNav) },
+    { title: '观测', items: filter(observeNav) },
+    { title: '系统', items: filter(adminNav) },
+  ].filter((g) => g.items.length)
 })
-
-const currentCluster = computed(() => clusters.value.find((c) => c.id === clusterId.value))
 
 const crumb = computed(() => {
-  if (inAdmin.value) return { a: '平台', b: sideItems.value.find((i) => i.path === route.path)?.label || '系统管理' }
-  if (inCluster.value) {
-    const page = clusterNav.find((n) => route.path.includes(`/c/${clusterId.value}/${n.path}`))
-    return { a: currentCluster.value?.name || `集群#${clusterId.value}`, b: page?.label || '详情' }
-  }
-  return { a: '平台', b: '集群选择' }
+  const all = [...primaryNav, ...observeNav, ...adminNav]
+  const hit = all.find((i) => route.path === i.path || route.path.startsWith(i.path + '/'))
+  if (route.path.startsWith('/orchestrate')) return { a: 'DataStack', b: '组件编排' }
+  if (route.path.startsWith('/instances/')) return { a: '实例管理', b: '实例详情' }
+  if (route.path.startsWith('/tasks/')) return { a: '部署任务', b: '任务详情' }
+  if (route.path.startsWith('/plugins/')) return { a: '插件市场', b: '插件详情' }
+  if (route.path.startsWith('/hosts/')) return { a: '主机资源', b: '主机详情' }
+  return { a: 'DataStack', b: hit?.label || '工作台' }
 })
-
-async function loadClusters() {
-  try {
-    clusters.value = await api.clusters()
-  } catch {
-    clusters.value = []
-  }
-}
 
 watch(
   () => route.path,
-  async () => {
+  () => {
     user.value = getUser()
-    if (!isAuth.value) await loadClusters()
   },
   { immediate: true },
 )
@@ -96,6 +72,7 @@ function logout() {
 }
 
 function isActive(path) {
+  if (path === '/workbench') return route.path === '/workbench' || route.path === '/'
   return route.path === path || route.path.startsWith(path + '/')
 }
 </script>
@@ -105,39 +82,41 @@ function isActive(path) {
     <template v-if="!isAuth">
       <header class="topbar">
         <div class="brand">
-          <div class="brand-mark">D</div>
-          <div class="brand-name">DataCluster 管控平台</div>
+          <div class="brand-mark">DS</div>
+          <div class="brand-name">DataStack</div>
         </div>
-        <div class="top-center" v-if="inCluster">
-          <select class="cluster-switch" style="width:auto" :value="clusterId" @change="(e) => router.push(`/c/${e.target.value}/overview`)">
-            <option v-for="c in clusters" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
+        <div class="top-center">
+          <span class="muted" style="font-size:13px">插件化大数据底座编排平台</span>
         </div>
         <div class="top-right">
-          <button class="link-btn" @click="go('/clusters')">集群</button>
+          <button class="btn primary" style="padding:4px 12px" @click="go('/orchestrate')">新建编排</button>
           <span>{{ user?.display_name || user?.username }}</span>
-          <div class="avatar">{{ (user?.display_name || user?.username || 'U').slice(0,1) }}</div>
+          <div class="avatar">{{ (user?.display_name || user?.username || 'U').slice(0, 1) }}</div>
           <button class="link-btn" @click="logout">退出</button>
         </div>
       </header>
 
       <div class="body">
         <aside class="rail">
-          <button class="rail-item" :class="{ active: !inAdmin }" title="集群" @click="go(inCluster ? `/c/${clusterId}/overview` : '/clusters')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <button class="rail-item" :class="{ active: !route.path.startsWith('/admin') }" title="工作台" @click="go('/workbench')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l8-6 8 6v9a1 1 0 01-1 1h-5v-5H10v5H5a1 1 0 01-1-1v-9z"/></svg>
           </button>
-          <button class="rail-item" :class="{ active: inAdmin }" title="系统管理" @click="go('/admin/users')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>
+          <button class="rail-item" :class="{ active: route.path.startsWith('/plugins') }" title="插件市场" @click="go('/plugins')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2.1 2.1M15.7 15.7l2.1 2.1M6.2 17.8l2.1-2.1M15.7 8.3l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="rail-item" :class="{ active: route.path.startsWith('/admin') }" title="系统管理" @click="go('/admin/settings')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
           </button>
           <div class="rail-spacer"></div>
         </aside>
 
         <aside class="side">
-          <div class="side-head">{{ sideTitle }}</div>
+          <div class="side-head">平台资源</div>
           <input v-model="sideFilter" class="side-search" placeholder="搜索菜单" />
-          <nav class="side-nav">
+          <nav class="side-nav" v-for="g in sideGroups" :key="g.title">
+            <div class="muted" style="padding:8px 10px 4px;font-size:11px">{{ g.title }}</div>
             <button
-              v-for="item in sideItems"
+              v-for="item in g.items"
               :key="item.path"
               :class="{ active: isActive(item.path) }"
               @click="go(item.path)"

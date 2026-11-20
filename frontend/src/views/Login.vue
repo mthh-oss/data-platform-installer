@@ -45,7 +45,7 @@ async function submit() {
     })
     if (remember.value) localStorage.setItem('dpi_remember_user', username.value)
     else localStorage.removeItem('dpi_remember_user')
-    router.replace('/clusters')
+    router.replace('/workbench')
   } catch (e) {
     error.value = e.message
   } finally {
@@ -57,23 +57,20 @@ async function submit() {
 <template>
   <div class="auth-wrap">
     <aside class="auth-brand">
-      <div class="brand-mark" style="width:40px;height:40px;font-size:18px;margin-bottom:16px">D</div>
-      <h1>DataCluster 管控平台</h1>
-      <p>一站式大数据集群运维平台。纳管 Doris / Flink / MySQL / Flink CDC / DolphinScheduler，对标 CDH 核心能力，交互更轻。</p>
+      <div class="brand-mark" style="width:40px;height:40px;font-size:14px;margin-bottom:16px">DS</div>
+      <h1>DataStack</h1>
+      <p>插件化大数据底座编排平台。勾选组件、分配主机、一键部署；插件市场扩展，实例运维配套。</p>
     </aside>
     <div class="auth-form-wrap">
       <section class="auth-card">
         <h2>{{ mode === 'setup' ? '初始化管理员' : '账号登录' }}</h2>
         <p class="sub">
           {{ mode === 'setup'
-            ? '首次使用请创建主账号。密码至少 8 位，需含字母，不能全是数字。'
-            : '支持本地账号（LDAP 对接见平台设置）。' }}
+            ? '首次使用请创建主账号。密码至少 8 位，需含字母。'
+            : '本地账号登录；LDAP 在平台设置中对接。' }}
         </p>
         <div class="form-grid" style="grid-template-columns:1fr">
-          <div class="field">
-            <label>账号</label>
-            <input v-model="username" autocomplete="username" />
-          </div>
+          <div class="field"><label>账号</label><input v-model="username" autocomplete="username" /></div>
           <div class="field">
             <label>密码</label>
             <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
@@ -82,7 +79,7 @@ async function submit() {
             <label>登录方式</label>
             <select v-model="authType">
               <option value="local">本地账号</option>
-              <option value="ldap" disabled>LDAP（平台设置启用后可用）</option>
+              <option value="ldap" disabled>LDAP（设置启用后可用）</option>
             </select>
           </div>
           <label v-if="mode === 'login'" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub)">
@@ -94,7 +91,6 @@ async function submit() {
             {{ loading ? '提交中…' : mode === 'setup' ? '创建并进入' : '登录' }}
           </button>
         </div>
-        <p class="muted" style="margin-top:12px;font-size:12px" v-if="mode === 'login'">忘记密码：二期开放，请联系管理员重置。</p>
         <p class="error" v-if="error">{{ error }}</p>
       </section>
     </div>

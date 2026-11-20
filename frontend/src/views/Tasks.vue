@@ -2,21 +2,23 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
+import { deployStatus } from '../utils/plugin'
 
 const route = useRoute()
 const router = useRouter()
-const clusterId = computed(() => Number(route.params.clusterId))
 const jobs = ref([])
+const instances = ref([])
 const current = ref(null)
 const logs = ref('')
+const keyword = ref('')
 const error = ref('')
 let timer = null
 
 const phases = [
-  { key: 'preparing', label: '准备配置' },
-  { key: 'downloading', label: '下载镜像' },
-  { key: 'starting', label: '启动组件' },
-  { key: 'ready', label: '就绪' },
+  { key: 'preparing', label: '准备' },
+  { key: 'downloading', label: '下载' },
+  { key: 'starting', label: '启动' },
+  { key: 'ready', label: '完成' },
 ]
 
 const phaseIndex = computed(() => {
@@ -27,9 +29,25 @@ const phaseIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 
+const logView = computed(() => {
+  if (!keyword.value.trim()) return logs.value
+  const k = keyword.value.trim()
+  return logs.value.split(k).join(`【${k}】`)
+})
+
+const tree = computed(() => {
+  const c = instances.value.find((x) => x.id === current.value?.cluster_id)
+  return (c?.platforms || []).map((pid) => ({
+    id: pid,
+    status: deployStatus(current.value).text,
+    progress: current.value?.progress ?? 0,
+  }))
+})
+
 async function refresh() {
   try {
-    jobs.value = await api.jobs(clusterId.value)
+    jobs.value = await api.jobs()
+    instances.value = await api.clusters()
     const jid = route.params.jobId || current.value?.id || jobs.value[0]?.id
     if (jid) {
       current.value = await api.job(jid)
@@ -41,7 +59,7 @@ async function refresh() {
 }
 
 function openJob(id) {
-  router.push(`/c/${clusterId.value}/tasks/${id}`)
+  router.push(`/tasks/${id}`)
 }
 
 function phaseClass(idx) {
@@ -59,15 +77,15 @@ onMounted(() => {
   timer = setInterval(refresh, 1500)
 })
 onUnmounted(() => timer && clearInterval(timer))
-watch(() => [clusterId.value, route.params.jobId], refresh)
+watch(() => route.params.jobId, refresh)
 </script>
 
 <template>
   <section class="panel">
     <div class="panel-title">
       <div>
-        <h2>任务中心</h2>
-        <p class="muted" style="margin:6px 0 0">重启、分发、部署等慢操作统一异步跟踪</p>
+        <h2>部署任务</h2>
+        <p class="muted" style="margin:6px 0 0">状态仅使用：排队 / 部署中 / 成功 / 失败 / 已取消（勿与实例运行态混用）</p>
       </div>
       <button class="btn ghost" @click="refresh">刷新</button>
     </div>
@@ -83,19 +101,19 @@ watch(() => [clusterId.value, route.params.jobId], refresh)
           @click="openJob(j.id)"
         >
           <h3>#{{ j.id }} · {{ j.action }}</h3>
-          <p>{{ j.phase || j.status }} · {{ j.progress ?? 0 }}%</p>
+          <p>
+            <span class="status-pill" :class="deployStatus(j).cls">{{ deployStatus(j).text }}</span>
+            · {{ j.progress ?? 0 }}%
+          </p>
         </button>
-        <p class="muted" v-if="!jobs.length">暂无任务</p>
+        <p class="muted" v-if="!jobs.length">暂无部署任务</p>
       </div>
 
       <div v-if="current">
         <div class="progress-head">
           <div>
             任务 #{{ current.id }}
-            <span
-              class="status-pill"
-              :class="current.status === 'succeeded' ? 'healthy' : current.status === 'failed' ? 'unhealthy' : 'unknown'"
-            >{{ current.phase || current.status }}</span>
+            <span class="status-pill" :class="deployStatus(current).cls">{{ deployStatus(current).text }}</span>
           </div>
           <strong>{{ current.progress ?? 0 }}%</strong>
         </div>
@@ -108,14 +126,38 @@ watch(() => [clusterId.value, route.params.jobId], refresh)
             <span>{{ p.label }}</span>
           </div>
         </div>
+
+        <h3 style="font-size:14px">组件进度</h3>
+        <table class="table">
+          <thead><tr><th>组件</th><th>部署状态</th><th>进度</th></tr></thead>
+          <tbody>
+            <tr v-for="n in tree" :key="n.id">
+              <td>{{ n.id }}</td>
+              <td>{{ n.status }}</td>
+              <td>{{ n.progress }}%</td>
+            </tr>
+          </tbody>
+        </table>
+
         <p class="error" v-if="current.error">{{ current.error }}</p>
         <div class="actions">
-          <button class="btn" @click="api.downloadJobLogs(current.id)">下载任务日志</button>
-          <button class="btn primary" v-if="current.status === 'succeeded'" @click="router.push(`/c/${clusterId}/overview`)">去总览</button>
+          <button class="btn" @click="api.downloadJobLogs(current.id)">下载全部日志</button>
+          <button class="btn" disabled title="一期占位">取消任务</button>
+          <button class="btn" disabled title="一期占位">重试失败节点</button>
+          <button class="btn" v-if="deployStatus(current).key === 'failed'">AI 分析</button>
+          <button
+            class="btn primary"
+            v-if="deployStatus(current).key === 'success'"
+            @click="router.push(`/instances/${current.cluster_id}`)"
+          >进入实例</button>
         </div>
-        <div class="log">{{ logs || '（等待日志…）' }}</div>
+
+        <div class="toolbar" style="margin:10px 0">
+          <input v-model="keyword" class="select" style="width:200px" placeholder="日志关键词高亮" />
+        </div>
+        <div class="log">{{ logView || '（等待日志…）' }}</div>
       </div>
-      <div v-else class="muted">选择左侧任务查看进度</div>
+      <div v-else class="muted">选择左侧任务查看部署进度与日志</div>
     </div>
     <p class="error" v-if="error">{{ error }}</p>
   </section>

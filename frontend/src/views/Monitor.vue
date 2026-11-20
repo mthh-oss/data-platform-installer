@@ -1,94 +1,50 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { api } from '../api/client'
+import { instanceStatus } from '../utils/plugin'
 
-const clusters = ref([])
-const selectedId = ref(null)
-const health = ref(null)
+const instances = ref([])
+const healthMap = ref({})
 const error = ref('')
-const busy = ref(false)
-let timer = null
 
-async function refresh() {
+onMounted(async () => {
   try {
-    clusters.value = await api.clusters()
-    if (!selectedId.value && clusters.value.length) {
-      selectedId.value = clusters.value[0].id
+    instances.value = await api.clusters()
+    const map = {}
+    for (const c of instances.value) {
+      try {
+        map[c.id] = await api.clusterHealth(c.id)
+      } catch {
+        map[c.id] = null
+      }
     }
-    if (selectedId.value) {
-      health.value = await api.clusterHealth(selectedId.value)
-    }
+    healthMap.value = map
   } catch (e) {
     error.value = e.message
   }
-}
-
-async function act(fn) {
-  if (!selectedId.value) return
-  busy.value = true
-  error.value = ''
-  try {
-    const job = await fn(selectedId.value)
-    error.value = `已触发任务 #${job.id}（${job.action}）`
-    await refresh()
-  } catch (e) {
-    error.value = e.message
-  } finally {
-    busy.value = false
-  }
-}
-
-async function downloadAbnormal() {
-  if (!selectedId.value) return
-  try {
-    await api.downloadAbnormal(selectedId.value)
-  } catch (e) {
-    error.value = e.message
-  }
-}
-
-onMounted(() => {
-  refresh()
-  timer = setInterval(refresh, 5000)
 })
-onUnmounted(() => timer && clearInterval(timer))
 </script>
 
 <template>
   <section class="panel">
-    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
+    <div class="panel-title">
       <div>
-        <h2 style="margin:0">监控看板</h2>
-        <p class="muted" style="margin:6px 0 0">TCP / HTTP / Docker 健康探测聚合 · Prometheus: <code>/metrics</code></p>
-      </div>
-      <div class="actions" style="margin:0">
-        <select v-model.number="selectedId" @change="refresh" style="background:#0d1524;border:1px solid var(--line);border-radius:10px;padding:8px 10px;">
-          <option v-for="c in clusters" :key="c.id" :value="c.id">{{ c.name }} ({{ c.status }})</option>
-        </select>
-        <button class="btn" :disabled="busy || !selectedId" @click="downloadAbnormal">下载异常日志</button>
-        <button class="btn" :disabled="busy || !selectedId" @click="act(api.restart)">重启</button>
-        <button class="btn danger" :disabled="busy || !selectedId" @click="act(api.stop)">停止</button>
+        <h2>监控大盘</h2>
+        <p class="muted" style="margin:6px 0 0">全局实例运行态概览；细粒度指标由插件 metrics.json 驱动（P1）。</p>
       </div>
     </div>
-
-    <p class="muted" v-if="!clusters.length" style="margin-top:16px">还没有集群。请先通过配置向导部署。</p>
-
-    <div class="monitor-grid" style="margin-top:18px" v-if="health">
-      <div class="monitor-card" v-for="(info, pid) in health.platforms" :key="pid">
-        <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
-          <h3>{{ pid }}</h3>
-          <span class="status-pill" :class="info.ok ? 'healthy' : 'unhealthy'">{{ info.status }}</span>
-        </div>
-        <p class="muted" style="margin:0; font-size:0.8rem">{{ info.checked_at }}</p>
-        <ul class="check-list">
-          <li v-for="c in info.checks" :key="c.name">
-            <span>{{ c.name }}</span>
-            <span :class="c.ok ? 'ok' : 'error'">{{ c.ok ? 'UP' : 'DOWN' }} · {{ c.detail }}</span>
-          </li>
-        </ul>
+    <div class="monitor-grid">
+      <div class="monitor-card" v-for="c in instances" :key="c.id">
+        <div class="topo-title">{{ c.name }}</div>
+        <div class="topo-deps">{{ (c.platforms || []).join(', ') }}</div>
+        <p style="margin-top:8px">
+          <span class="status-pill" :class="instanceStatus(c, healthMap[c.id]?.platforms || {}).cls">
+            {{ instanceStatus(c, healthMap[c.id]?.platforms || {}).text }}
+          </span>
+        </p>
       </div>
     </div>
-
-    <p class="error" v-if="error" style="margin-top:14px">{{ error }}</p>
+    <div class="empty" v-if="!instances.length">暂无实例可监控</div>
+    <p class="error" v-if="error">{{ error }}</p>
   </section>
 </template>

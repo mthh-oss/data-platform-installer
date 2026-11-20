@@ -1,14 +1,13 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
 import { api } from '../api/client'
 
-const route = useRoute()
-const clusterId = computed(() => Number(route.params.clusterId))
 const jobs = ref([])
+const instances = ref([])
 const currentId = ref(null)
 const logs = ref('')
 const keyword = ref('')
+const instanceFilter = ref('all')
 const error = ref('')
 
 const highlighted = computed(() => {
@@ -17,10 +16,17 @@ const highlighted = computed(() => {
   return logs.value.split(k).join(`【${k}】`)
 })
 
+const filteredJobs = computed(() => {
+  if (instanceFilter.value === 'all') return jobs.value
+  const cid = Number(instanceFilter.value)
+  return jobs.value.filter((j) => j.cluster_id === cid)
+})
+
 async function load() {
   try {
-    jobs.value = await api.jobs(clusterId.value)
-    if (!currentId.value && jobs.value.length) currentId.value = jobs.value[0].id
+    jobs.value = await api.jobs()
+    instances.value = await api.clusters()
+    if (!currentId.value && filteredJobs.value.length) currentId.value = filteredJobs.value[0].id
     if (currentId.value) logs.value = await api.jobLogs(currentId.value)
   } catch (e) {
     error.value = e.message
@@ -33,28 +39,28 @@ async function openJob(id) {
 }
 
 onMounted(load)
-watch(clusterId, load)
 </script>
 
 <template>
   <section class="panel">
     <div class="panel-title">
       <div>
-        <h2>日志检索</h2>
-        <p class="muted" style="margin:6px 0 0">跨任务统一检索部署/启停日志；支持关键词高亮与下载</p>
+        <h2>全局日志检索</h2>
+        <p class="muted" style="margin:6px 0 0">按实例 / 任务 / 关键词检索部署与运维日志</p>
       </div>
       <div class="toolbar">
-        <input v-model="keyword" class="select" style="width:180px" placeholder="关键词过滤" />
+        <select v-model="instanceFilter" class="select" style="width:160px" @change="load">
+          <option value="all">全部实例</option>
+          <option v-for="c in instances" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+        </select>
+        <input v-model="keyword" class="select" style="width:180px" placeholder="关键词" />
         <button class="btn ghost" @click="load">刷新</button>
-        <button class="btn" :disabled="!currentId" @click="api.downloadJobLogs(currentId)">下载当前日志</button>
-        <button class="btn" @click="api.downloadAbnormal(clusterId)">下载异常包</button>
       </div>
     </div>
-
     <div class="jobs-layout">
       <div>
         <button
-          v-for="j in jobs"
+          v-for="j in filteredJobs"
           :key="j.id"
           class="choice"
           style="width:100%;margin-bottom:8px"
@@ -62,11 +68,11 @@ watch(clusterId, load)
           @click="openJob(j.id)"
         >
           <h3>#{{ j.id }} · {{ j.action }}</h3>
-          <p>{{ j.phase || j.status }}</p>
+          <p>实例 #{{ j.cluster_id }}</p>
         </button>
-        <p class="muted" v-if="!jobs.length">暂无任务日志</p>
+        <p class="muted" v-if="!filteredJobs.length">暂无日志</p>
       </div>
-      <div class="log">{{ highlighted || '选择左侧任务查看日志' }}</div>
+      <div class="log">{{ highlighted || '选择任务查看日志' }}</div>
     </div>
     <p class="error" v-if="error">{{ error }}</p>
   </section>

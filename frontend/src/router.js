@@ -1,19 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { api, getToken, setToken, setUser } from './api/client'
 import Login from './views/Login.vue'
-import ClusterSelect from './views/ClusterSelect.vue'
-import ClusterDashboard from './views/ClusterDashboard.vue'
-import Services from './views/Services.vue'
-import ServiceDetail from './views/ServiceDetail.vue'
+import Workbench from './views/Workbench.vue'
+import Orchestrate from './views/Orchestrate.vue'
+import Tasks from './views/Tasks.vue'
+import Instances from './views/Instances.vue'
+import InstanceDetail from './views/InstanceDetail.vue'
 import Hosts from './views/Hosts.vue'
 import HostDetail from './views/HostDetail.vue'
+import PluginMarket from './views/PluginMarket.vue'
+import PluginDetail from './views/PluginDetail.vue'
 import Alerts from './views/Alerts.vue'
 import Logs from './views/Logs.vue'
-import Parcels from './views/Parcels.vue'
-import ClientConfig from './views/ClientConfig.vue'
-import Tasks from './views/Tasks.vue'
-import ConfigCenter from './views/ConfigCenter.vue'
-import Wizard from './views/Wizard.vue'
+import Monitor from './views/Monitor.vue'
 import Personnel from './views/Personnel.vue'
 import Settings from './views/Settings.vue'
 import Audit from './views/Audit.vue'
@@ -24,31 +23,31 @@ const router = createRouter({
     { path: '/login', name: 'login', component: Login, meta: { public: true } },
     { path: '/setup', name: 'setup', component: Login, meta: { public: true } },
 
-    { path: '/', redirect: '/clusters' },
-    { path: '/clusters', name: 'clusters', component: ClusterSelect },
-    { path: '/deploy', name: 'deploy', component: Wizard },
-
-    { path: '/c/:clusterId/overview', name: 'overview', component: ClusterDashboard },
-    { path: '/c/:clusterId/services', name: 'services', component: Services },
-    { path: '/c/:clusterId/services/:sid', name: 'service-detail', component: ServiceDetail },
-    { path: '/c/:clusterId/hosts', name: 'hosts', component: Hosts },
-    { path: '/c/:clusterId/hosts/:hid', name: 'host-detail', component: HostDetail },
-    { path: '/c/:clusterId/alerts', name: 'alerts', component: Alerts },
-    { path: '/c/:clusterId/logs', name: 'logs', component: Logs },
-    { path: '/c/:clusterId/parcels', name: 'parcels', component: Parcels },
-    { path: '/c/:clusterId/client', name: 'client', component: ClientConfig },
-    { path: '/c/:clusterId/tasks', name: 'tasks', component: Tasks },
-    { path: '/c/:clusterId/tasks/:jobId', name: 'task-detail', component: Tasks },
-    { path: '/c/:clusterId/config', name: 'config', component: ConfigCenter },
+    { path: '/', redirect: '/workbench' },
+    { path: '/workbench', name: 'workbench', component: Workbench },
+    { path: '/orchestrate', name: 'orchestrate', component: Orchestrate },
+    { path: '/tasks', name: 'tasks', component: Tasks },
+    { path: '/tasks/:jobId', name: 'task-detail', component: Tasks },
+    { path: '/instances', name: 'instances', component: Instances },
+    { path: '/instances/:id', name: 'instance-detail', component: InstanceDetail },
+    { path: '/hosts', name: 'hosts', component: Hosts },
+    { path: '/hosts/:hid', name: 'host-detail', component: HostDetail },
+    { path: '/plugins', name: 'plugins', component: PluginMarket },
+    { path: '/plugins/:pid', name: 'plugin-detail', component: PluginDetail },
+    { path: '/alerts', name: 'alerts', component: Alerts },
+    { path: '/logs', name: 'logs', component: Logs },
+    { path: '/monitor', name: 'monitor', component: Monitor },
 
     { path: '/admin/users', name: 'admin-users', component: Personnel },
     { path: '/admin/audit', name: 'admin-audit', component: Audit },
     { path: '/admin/settings', name: 'admin-settings', component: Settings },
 
-    // legacy redirects
-    { path: '/overview', redirect: '/clusters' },
-    { path: '/jobs/:id?', redirect: (to) => (to.params.id ? `/clusters` : '/clusters') },
-    { path: '/monitor', redirect: '/clusters' },
+    // 旧 CDH 路径收敛到 DataStack
+    { path: '/clusters', redirect: '/workbench' },
+    { path: '/deploy', redirect: '/orchestrate' },
+    { path: '/c/:clusterId/:rest(.*)*', redirect: '/workbench' },
+    { path: '/overview', redirect: '/workbench' },
+    { path: '/jobs/:id?', redirect: (to) => (to.params.id ? `/tasks/${to.params.id}` : '/tasks') },
     { path: '/personnel', redirect: '/admin/users' },
     { path: '/settings', redirect: '/admin/settings' },
   ],

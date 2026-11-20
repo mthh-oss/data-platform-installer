@@ -37,7 +37,7 @@ async function save() {
     <div class="panel-title">
       <div>
         <h2>平台设置</h2>
-        <p class="muted" style="margin:6px 0 0">AI / 主题 / 通知等；人员关系见「系统管理 → 人员关系」。</p>
+        <p class="muted" style="margin:6px 0 0">AI Provider（一期 DeepSeek）/ Webhook / LDAP / 主题。Key 仅后端存储，前端不回显明文。</p>
       </div>
     </div>
 
