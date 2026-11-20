@@ -12,7 +12,7 @@ WEB_PORT="${DPI_WEB_PORT:-5173}"
 check() {
   local name="$1"
   local pid_file="$PID_DIR/$2.pid"
-  if [[ -f "$pid_file" ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+  if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
     echo "$name: running (pid $(cat "$pid_file"))"
   else
     echo "$name: stopped"

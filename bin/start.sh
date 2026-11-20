@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # One-click start: API (8000) + Web (5173)
-# Compatible when invoked as `sh start.sh` — re-exec with bash.
 if [ -z "${BASH_VERSION:-}" ]; then
   exec bash "$0" "$@"
 fi
 set -eu
-# pipefail is bash-only; avoid for maximum compatibility
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
@@ -30,10 +28,10 @@ need_cmd() {
 
 is_running() {
   local pid_file="$1"
-  [[ -f "$pid_file" ]] || return 1
+  [ -f "$pid_file" ] || return 1
   local pid
   pid="$(cat "$pid_file" 2>/dev/null || true)"
-  [[ -n "${pid:-}" ]] || return 1
+  [ -n "${pid:-}" ] || return 1
   kill -0 "$pid" 2>/dev/null
 }
 
@@ -49,12 +47,12 @@ start_backend() {
   need_cmd python3
   cd "$BACKEND_DIR"
 
-  if [[ ! -d .venv ]]; then
+  if [ ! -d .venv ]; then
     info "creating python venv..."
     python3 -m venv .venv
   fi
   # shellcheck disable=SC1091
-  source .venv/bin/activate
+  . .venv/bin/activate
   info "installing backend deps..."
   pip install -q -r requirements.txt
 
@@ -82,7 +80,7 @@ start_frontend() {
   need_cmd npm
   cd "$FRONTEND_DIR"
 
-  if [[ ! -d node_modules ]]; then
+  if [ ! -d node_modules ]; then
     info "installing frontend deps (npm install)..."
     npm install
   fi
