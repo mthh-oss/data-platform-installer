@@ -17,6 +17,16 @@ const selectedPlugins = computed(() =>
   plugins.value.filter((p) => selected.value.includes(p.id)),
 )
 
+const missingDeps = computed(() => {
+  const miss = []
+  for (const p of selectedPlugins.value) {
+    for (const dep of p.dependencies || []) {
+      if (!selected.value.includes(dep)) miss.push(`${p.id} → ${dep}`)
+    }
+  }
+  return [...new Set(miss)]
+})
+
 onMounted(async () => {
   try {
     system.value = await api.health()
@@ -30,19 +40,44 @@ onMounted(async () => {
 })
 
 function toggle(id) {
+  const plugin = plugins.value.find((p) => p.id === id)
   if (selected.value.includes(id)) {
     selected.value = selected.value.filter((x) => x !== id)
-  } else {
-    selected.value = [...selected.value, id]
+    return
   }
+  const next = new Set(selected.value)
+  next.add(id)
+  // auto pick dependencies
+  for (const dep of plugin?.dependencies || []) next.add(dep)
+  selected.value = [...next]
 }
 
 function fieldType(prop) {
   return prop.type === 'integer' ? 'number' : 'text'
 }
 
-async function submit() {
+function goConfig() {
   error.value = ''
+  if (!selected.value.length) {
+    error.value = '请至少选择一个组件'
+    return
+  }
+  if (missingDeps.value.length) {
+    error.value = `缺少依赖：${missingDeps.value.join('；')}`
+    return
+  }
+  if (!system.value?.docker_ok) {
+    error.value = '当前机器 Docker 不可用，无法下载/启动组件。请先安装并启动 Docker。'
+  }
+  step.value = 2
+}
+
+async function oneClickStart() {
+  error.value = ''
+  if (!system.value?.docker_ok) {
+    error.value = 'Docker 不可用，无法一键下载并启动。'
+    return
+  }
   loading.value = true
   try {
     const body = {
@@ -63,15 +98,20 @@ async function submit() {
 
 <template>
   <section class="panel">
-    <div class="steps">
-      <div class="step" :class="{ active: step === 1, done: step > 1 }">1. 选择平台</div>
-      <div class="step" :class="{ active: step === 2, done: step > 2 }">2. 填写配置</div>
-      <div class="step" :class="{ active: step === 3 }">3. 确认部署</div>
+    <div class="hero-line">
+      <h2 style="margin:0">一键搭建数据平台</h2>
+      <p class="muted" style="margin:8px 0 0">挑选组件 → 填写配置 → 一键下载镜像并启动（体验对齐 Flink 式启动）</p>
+    </div>
+
+    <div class="steps" style="margin-top:18px">
+      <div class="step" :class="{ active: step === 1, done: step > 1 }">1. 挑选组件</div>
+      <div class="step" :class="{ active: step === 2 }">2. 配置并一键启动</div>
     </div>
 
     <p class="muted" v-if="system">
-      控制面正常 · Docker {{ system.docker_ok ? '可用' : '不可用' }} ·
-      已加载插件 {{ (system.plugins || []).join(', ') || '无' }}
+      Docker
+      <span :class="system.docker_ok ? 'ok' : 'error'">{{ system.docker_ok ? '可用' : '不可用' }}</span>
+      · 可选项：{{ (system.plugins || []).join(', ') || '无' }}
     </p>
 
     <div v-if="step === 1">
@@ -86,21 +126,26 @@ async function submit() {
         >
           <h3>{{ p.name }}</h3>
           <p>{{ p.description || p.id }} · v{{ p.version }}</p>
-          <div class="deps" v-if="p.dependencies?.length">依赖：{{ p.dependencies.join(', ') }}</div>
+          <div class="deps" v-if="p.dependencies?.length">依赖：{{ p.dependencies.join(', ') }}（勾选时自动带上）</div>
         </button>
       </div>
       <div class="actions">
-        <button class="btn primary" :disabled="!selected.length" @click="step = 2">下一步</button>
+        <button class="btn primary" :disabled="!selected.length" @click="goConfig">下一步：配置</button>
       </div>
     </div>
 
-    <div v-else-if="step === 2">
+    <div v-else>
       <div class="field" style="margin-bottom: 16px">
         <label>集群名称</label>
         <input v-model="clusterName" />
       </div>
-      <div v-for="p in selectedPlugins" :key="p.id" style="margin-bottom: 22px">
-        <h3 style="margin: 0 0 10px">{{ p.name }}</h3>
+
+      <div class="selected-tags">
+        <span v-for="id in selected" :key="id" class="tag">{{ id }}</span>
+      </div>
+
+      <div v-for="p in selectedPlugins" :key="p.id" class="config-block">
+        <h3>{{ p.name }} 配置</h3>
         <div class="form-grid">
           <div class="field" v-for="(prop, key) in (p.schema || p.config_schema).properties" :key="key">
             <label>{{ prop.title || key }}</label>
@@ -112,23 +157,20 @@ async function submit() {
           </div>
         </div>
       </div>
-      <div class="actions">
-        <button class="btn" @click="step = 1">上一步</button>
-        <button class="btn primary" @click="step = 3">下一步</button>
-      </div>
-    </div>
 
-    <div v-else>
-      <p class="muted">将创建集群并异步执行 <code>docker compose up -d</code>。</p>
-      <ul class="summary-list">
-        <li>名称：{{ clusterName }}</li>
-        <li>平台：{{ selected.join(', ') }}</li>
-      </ul>
-      <div class="actions">
-        <button class="btn" @click="step = 2">上一步</button>
-        <button class="btn primary" :disabled="loading" @click="submit">
-          {{ loading ? '提交中…' : '开始部署' }}
-        </button>
+      <div class="launch-box">
+        <div>
+          <strong>将执行</strong>
+          <p class="muted" style="margin:6px 0 0">
+            1) 下载所选组件镜像 &nbsp; 2) 按依赖顺序启动 &nbsp; 3) 进入进度页实时查看
+          </p>
+        </div>
+        <div class="actions" style="margin:0">
+          <button class="btn" @click="step = 1">返回挑选</button>
+          <button class="btn primary launch" :disabled="loading" @click="oneClickStart">
+            {{ loading ? '提交中…' : '一键下载并启动' }}
+          </button>
+        </div>
       </div>
     </div>
 

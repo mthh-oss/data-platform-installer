@@ -45,6 +45,8 @@ class JobOut(BaseModel):
     cluster_id: int
     action: str
     status: str
+    phase: str = "pending"
+    progress: int = 0
     log_text: str = ""
     error: str = ""
     created_at: datetime | None = None

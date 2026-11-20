@@ -37,6 +37,9 @@ class DeployJob(Base):
     action: Mapped[str] = mapped_column(String(32), default="deploy")  # deploy|stop|restart
     status: Mapped[str] = mapped_column(String(32), default="pending")
     # pending|running|succeeded|failed
+    # preparing|downloading|starting|ready|failed
+    phase: Mapped[str] = mapped_column(String(32), default="pending")
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
     log_text: Mapped[str] = mapped_column(Text, default="")
     error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

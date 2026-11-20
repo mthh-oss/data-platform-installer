@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 
@@ -12,6 +12,21 @@ const current = ref(null)
 const logs = ref('')
 const error = ref('')
 let timer = null
+
+const phases = [
+  { key: 'preparing', label: '准备配置' },
+  { key: 'downloading', label: '下载镜像' },
+  { key: 'starting', label: '启动组件' },
+  { key: 'ready', label: '就绪' },
+]
+
+const phaseIndex = computed(() => {
+  const phase = current.value?.phase || 'pending'
+  if (phase === 'failed') return -1
+  if (phase === 'pending') return 0
+  const idx = phases.findIndex((p) => p.key === phase)
+  return idx >= 0 ? idx : 0
+})
 
 async function refreshList() {
   jobs.value = await api.jobs()
@@ -41,9 +56,17 @@ function openJob(id) {
   router.push(`/jobs/${id}`)
 }
 
+function phaseClass(idx) {
+  if (!current.value) return ''
+  if (current.value.phase === 'failed') return idx === 0 ? 'failed' : ''
+  if (idx < phaseIndex.value) return 'done'
+  if (idx === phaseIndex.value) return current.value.status === 'succeeded' || current.value.phase === 'ready' ? 'done' : 'active'
+  return ''
+}
+
 onMounted(() => {
   refresh()
-  timer = setInterval(refresh, 2000)
+  timer = setInterval(refresh, 1500)
 })
 onUnmounted(() => timer && clearInterval(timer))
 watch(() => route.params.id, () => refresh())
@@ -51,10 +74,10 @@ watch(() => route.params.id, () => refresh())
 
 <template>
   <section class="panel">
-    <h2 style="margin-top:0">部署任务</h2>
-    <p class="muted">每 2 秒刷新状态与日志。</p>
+    <h2 style="margin-top:0">下载与启动进度</h2>
+    <p class="muted">实时刷新：镜像下载 → 容器启动 → 就绪。完成后可去监控页查看健康状态。</p>
 
-    <div style="display:grid; gap:16px; grid-template-columns: minmax(240px, 320px) 1fr;">
+    <div class="jobs-layout">
       <div>
         <button
           v-for="j in jobs"
@@ -66,22 +89,50 @@ watch(() => route.params.id, () => refresh())
           @click="openJob(j.id)"
         >
           <h3>#{{ j.id }} · {{ j.action }}</h3>
-          <p>cluster={{ j.cluster_id }} · {{ j.status }}</p>
+          <p>{{ j.phase || j.status }} · {{ j.progress ?? 0 }}%</p>
         </button>
-        <p class="muted" v-if="!jobs.length">暂无任务，先去配置向导创建集群。</p>
+        <p class="muted" v-if="!jobs.length">暂无任务，先去向导一键启动。</p>
       </div>
 
       <div v-if="current">
-        <p>
-          任务 #{{ current.id }}
-          <span class="status-pill" :class="current.status === 'succeeded' ? 'healthy' : current.status === 'failed' ? 'unhealthy' : 'unknown'">
-            {{ current.status }}
-          </span>
-        </p>
+        <div class="progress-head">
+          <div>
+            任务 #{{ current.id }}
+            <span
+              class="status-pill"
+              :class="current.status === 'succeeded' ? 'healthy' : current.status === 'failed' ? 'unhealthy' : 'unknown'"
+            >
+              {{ current.phase || current.status }}
+            </span>
+          </div>
+          <strong>{{ current.progress ?? 0 }}%</strong>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: `${current.progress ?? 0}%` }"></div>
+        </div>
+
+        <div class="phase-row">
+          <div
+            v-for="(p, idx) in phases"
+            :key="p.key"
+            class="phase-item"
+            :class="phaseClass(idx)"
+          >
+            <div class="dot"></div>
+            <span>{{ p.label }}</span>
+          </div>
+        </div>
+
         <p class="error" v-if="current.error">{{ current.error }}</p>
-        <div class="log">{{ logs || '（暂无日志）' }}</div>
+
+        <div class="actions" v-if="current.status === 'succeeded'">
+          <router-link class="btn primary" to="/monitor">去监控看板</router-link>
+        </div>
+
+        <div class="log">{{ logs || '（等待日志…）' }}</div>
       </div>
-      <div v-else class="muted">选择左侧任务查看日志。</div>
+      <div v-else class="muted">选择左侧任务查看下载/启动进度。</div>
     </div>
 
     <p class="error" v-if="error">{{ error }}</p>

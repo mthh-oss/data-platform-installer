@@ -4,7 +4,7 @@
   --bg2: #1a2438;
   --line: rgba(148, 163, 184, 0.22);
   --text: #e8eef9;
-  --muted: #9 Pan, 115, 140;
+  --muted: #93a4bd;
   --accent: #3dd6c6;
   --accent-2: #5b8cff;
   --danger: #ff6b7a;
@@ -238,7 +238,90 @@ button, input, select, textarea {
 .summary-list { margin: 0; padding-left: 18px; color: #c7d3e6; }
 .summary-list li { margin: 6px 0; }
 
+.selected-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.tag {
+  border: 1px solid rgba(61, 214, 198, 0.45);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+.config-block {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-bottom: 12px;
+}
+.config-block h3 { margin: 0 0 10px; font-size: 1rem; }
+.launch-box {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(61, 214, 198, 0.35);
+  background: rgba(61, 214, 198, 0.06);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.btn.launch {
+  min-width: 180px;
+  font-size: 1rem;
+  padding: 12px 18px;
+}
+
+.jobs-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+}
+.progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .35s ease;
+}
+.phase-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+.phase-item {
+  text-align: center;
+  color: #8091a8;
+  font-size: 0.82rem;
+}
+.phase-item .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  background: #334155;
+}
+.phase-item.active { color: var(--accent); }
+.phase-item.active .dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(61,214,198,.15); }
+.phase-item.done { color: var(--ok); }
+.phase-item.done .dot { background: var(--ok); }
+.phase-item.failed { color: var(--danger); }
+.phase-item.failed .dot { background: var(--danger); }
+
 @media (max-width: 720px) {
   .topbar { flex-direction: column; align-items: flex-start; }
   .shell { padding: 18px 14px 40px; }
+  .jobs-layout { grid-template-columns: 1fr; }
+  .phase-row { grid-template-columns: repeat(2, 1fr); }
 }

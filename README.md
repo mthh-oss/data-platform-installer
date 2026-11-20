@@ -1,6 +1,6 @@
 # Data Platform Installer
 
-选配置后，通过 Docker Compose 一键搭建并监控：
+页面挑选组件并填写配置后，**一键下载镜像并启动**，通过 Docker Compose 搭建并监控：
 
 - Apache Doris
 - Apache Flink
@@ -44,11 +44,12 @@ npm run dev
 
 ### 3. 最小验证路径（MySQL + Flink）
 
-1. 打开「配置向导」
-2. 勾选 **MySQL**、**Apache Flink**
-3. 保持默认端口（3306 / 8081）或改成空闲端口
-4. 确认部署 → 在「部署任务」看 `docker compose up` 日志
-5. 到「监控看板」等待 health 变为 healthy（首次拉镜像可能较久）
+1. 打开「一键启动」
+2. 勾选 **MySQL**、**Apache Flink**（有依赖的组件会自动带上依赖）
+3. 填写端口/密码等配置
+4. 点击 **一键下载并启动**
+5. 在「下载/启动进度」看：准备配置 → 下载镜像 → 启动组件 → 就绪
+6. 到「监控看板」查看 health（首次拉镜像可能较久）
 
 也可在后端已启动时跑：
 

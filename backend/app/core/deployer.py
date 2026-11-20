@@ -30,11 +30,16 @@ def _append_log(db: Session, job: DeployJob, line: str) -> None:
     db.commit()
 
 
-def merge_compose_files(parts: list[Path], out_file: Path) -> Path:
-    """Naive merge: concatenate YAML documents under one services/volumes/networks key.
+def _set_phase(db: Session, job: DeployJob, phase: str, progress: int, message: str | None = None) -> None:
+    job.phase = phase
+    job.progress = max(0, min(100, progress))
+    db.add(job)
+    db.commit()
+    if message:
+        _append_log(db, job, f"[phase:{phase} {job.progress}%] {message}")
 
-    Each plugin compose is expected to be a full file; we merge top-level maps.
-    """
+
+def merge_compose_files(parts: list[Path], out_file: Path) -> Path:
     import yaml
 
     merged: dict[str, Any] = {
@@ -52,7 +57,6 @@ def merge_compose_files(parts: list[Path], out_file: Path) -> Path:
                         raise ValueError(f"compose key conflict in {key}: {sorted(overlap)}")
                     merged[key].update(data[key])
                 else:
-                    # networks/volumes may be shared across plugins (e.g. dpi_net)
                     for nk, nv in data[key].items():
                         if nk in merged[key] and merged[key][nk] != nv:
                             raise ValueError(
@@ -63,8 +67,6 @@ def merge_compose_files(parts: list[Path], out_file: Path) -> Path:
             if k not in merged:
                 merged[k] = v
 
-
-    # drop empty maps
     cleaned = {k: v for k, v in merged.items() if v}
     out_file.write_text(
         yaml.safe_dump(cleaned, sort_keys=False, allow_unicode=True),
@@ -118,7 +120,13 @@ def create_cluster(db: Session, name: str, platforms: list[str], configs: dict[s
 def start_job(cluster_id: int, action: str = "deploy") -> int:
     db = SessionLocal()
     try:
-        job = DeployJob(cluster_id=cluster_id, action=action, status="pending")
+        job = DeployJob(
+            cluster_id=cluster_id,
+            action=action,
+            status="pending",
+            phase="pending",
+            progress=0,
+        )
         db.add(job)
         db.commit()
         db.refresh(job)
@@ -140,27 +148,36 @@ def _run_job(job_id: int) -> None:
         cluster = db.get(Cluster, job.cluster_id)
         if not cluster:
             job.status = "failed"
+            job.phase = "failed"
             job.error = "cluster not found"
             db.commit()
             return
 
         job.status = "running"
+        job.phase = "preparing"
+        job.progress = 5
         db.commit()
 
         try:
             if job.action == "deploy":
                 _do_deploy(db, job, cluster)
             elif job.action == "stop":
+                _set_phase(db, job, "starting", 40, "stopping stack")
                 _do_stop(db, job, cluster)
             elif job.action == "restart":
+                _set_phase(db, job, "starting", 40, "restarting stack")
                 _do_restart(db, job, cluster)
             else:
                 raise ValueError(f"unknown action {job.action}")
             job.status = "succeeded"
+            job.phase = "ready"
+            job.progress = 100
             cluster.status = "running" if job.action != "stop" else "stopped"
+            _append_log(db, job, "[phase:ready 100%] done")
         except Exception as exc:  # noqa: BLE001
             logger.exception("job %s failed", job_id)
             job.status = "failed"
+            job.phase = "failed"
             job.error = str(exc)
             _append_log(db, job, f"ERROR: {exc}")
             cluster.status = "error"
@@ -178,13 +195,14 @@ def _do_deploy(db: Session, job: DeployJob, cluster: Cluster) -> None:
     configs: dict[str, Any] = json.loads(cluster.config_json)
     ordered = registry.topological_order(platforms)
 
+    _set_phase(db, job, "preparing", 10, "rendering compose templates")
     work_dir = Path(cluster.work_dir)
     compose_engine.ensure_clean_dir(work_dir)
     _append_log(db, job, f"workspace: {work_dir}")
     _append_log(db, job, f"deploy order: {ordered}")
 
     part_files: list[Path] = []
-    for pid in ordered:
+    for idx, pid in enumerate(ordered):
         plugin = registry.get(pid)
         cfg = {**plugin.default_config(), **(configs.get(pid) or {})}
         cfg["_project"] = cluster.project_name
@@ -192,7 +210,8 @@ def _do_deploy(db: Session, job: DeployJob, cluster: Cluster) -> None:
         plugin_dir = work_dir / pid
         result = plugin.render(cfg, plugin_dir)
         part_files.append(result.compose_file)
-        _append_log(db, job, f"rendered {pid} -> {result.compose_file}")
+        progress = 10 + int((idx + 1) / max(len(ordered), 1) * 15)
+        _set_phase(db, job, "preparing", progress, f"rendered {pid}")
 
     compose_file = work_dir / "docker-compose.yml"
     merge_compose_files(part_files, compose_file)
@@ -202,16 +221,45 @@ def _do_deploy(db: Session, job: DeployJob, cluster: Cluster) -> None:
     _append_log(db, job, f"merged compose: {compose_file}")
 
     avail = compose_engine.available()
-    _append_log(db, job, avail.stdout or avail.stderr)
+    if avail.stdout:
+        _append_log(db, job, avail.stdout)
+    if avail.stderr:
+        _append_log(db, job, avail.stderr)
     if not avail.ok:
-        raise RuntimeError("Docker is not available. Install Docker Desktop and ensure `docker` is on PATH.")
+        raise RuntimeError("Docker is not available. Install Docker and ensure `docker` is on PATH.")
 
-    result = compose_engine.compose_up(cluster.project_name, compose_file, work_dir)
-    _append_log(db, job, result.stdout)
-    if result.stderr:
-        _append_log(db, job, result.stderr)
+    _set_phase(db, job, "downloading", 30, "pulling container images (download)")
+
+    def on_pull_line(line: str) -> None:
+        _append_log(db, job, line)
+        # best-effort progress bumps while downloading
+        if job.progress < 70:
+            job.progress = min(70, job.progress + 1)
+            db.add(job)
+            db.commit()
+
+    pull = compose_engine.compose_pull(
+        cluster.project_name, compose_file, work_dir, on_line=on_pull_line
+    )
+    if not pull.ok:
+        raise RuntimeError(f"docker compose pull failed (code={pull.returncode})")
+
+    _set_phase(db, job, "starting", 75, "starting containers")
+
+    def on_up_line(line: str) -> None:
+        _append_log(db, job, line)
+        if job.progress < 95:
+            job.progress = min(95, job.progress + 1)
+            db.add(job)
+            db.commit()
+
+    result = compose_engine.compose_up(
+        cluster.project_name, compose_file, work_dir, on_line=on_up_line
+    )
     if not result.ok:
         raise RuntimeError(f"docker compose up failed (code={result.returncode})")
+
+    _set_phase(db, job, "starting", 95, "containers started, waiting for health probes on monitor page")
 
 
 def _do_stop(db: Session, job: DeployJob, cluster: Cluster) -> None:
