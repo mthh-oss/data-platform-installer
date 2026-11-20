@@ -8,3 +8,5 @@ httpx>=0.28.0
 python-multipart>=0.0.20
 PyYAML>=6.0.2
 PyJWT>=2.9.0
+cryptography>=42.0.0
+paramiko>=3.4.0

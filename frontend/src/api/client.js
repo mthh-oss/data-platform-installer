@@ -85,6 +85,7 @@ export const api = {
   createHost: (body) => request('/api/hosts', { method: 'POST', body: JSON.stringify(body) }),
   updateHost: (id, body) => request(`/api/hosts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteHost: (id) => request(`/api/hosts/${id}`, { method: 'DELETE' }),
+  verifyHost: (id) => request(`/api/hosts/${id}/verify`, { method: 'POST' }),
 
   plugins: () => request('/api/plugins'),
   health: () => request('/api/health'),

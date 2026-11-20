@@ -64,7 +64,7 @@ class User(Base):
 
 
 class Host(Base):
-    """Machine inventory for FE/BE placement."""
+    """Machine inventory；纳管需 SSH 凭据，密码加密存储，前端永不回显明文。"""
 
     __tablename__ = "hosts"
 
@@ -73,9 +73,12 @@ class Host(Base):
     ip: Mapped[str] = mapped_column(String(64), nullable=False)
     ssh_port: Mapped[int] = mapped_column(Integer, default=22)
     ssh_user: Mapped[str] = mapped_column(String(64), default="root")
+    ssh_password_enc: Mapped[str] = mapped_column(Text, default="")  # Fernet 密文
     is_local: Mapped[bool] = mapped_column(Boolean, default=False)
     labels: Mapped[str] = mapped_column(String(255), default="")  # e.g. fe,be,flink
     remark: Mapped[str] = mapped_column(String(255), default="")
+    # unknown | verified | offline | unverified
+    agent_status: Mapped[str] = mapped_column(String(32), default="unverified")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

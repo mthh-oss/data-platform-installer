@@ -49,6 +49,13 @@ def _migrate_sqlite() -> None:
             if "manager_id" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN manager_id INTEGER"))
 
+        # hosts：SSH 凭据与 Agent 状态
+        cols = _table_cols(conn, "hosts")
+        if cols:
+            if "ssh_password_enc" not in cols:
+                conn.execute(text("ALTER TABLE hosts ADD COLUMN ssh_password_enc TEXT DEFAULT ''"))
+            if "agent_status" not in cols:
+                conn.execute(text("ALTER TABLE hosts ADD COLUMN agent_status VARCHAR(32) DEFAULT 'unverified'"))
 
 
 def init_db() -> None:
