@@ -116,8 +116,12 @@ async function oneClickStart() {
 
 <template>
   <section class="panel">
-    <h2 style="margin-top:0">一键搭建</h2>
-    <p class="muted">挑选组件并配置，一键下载镜像并启动。Doris 可分别选择 FE / BE 机器。</p>
+    <div class="panel-title">
+      <div>
+        <h2>组件部署</h2>
+        <p class="muted" style="margin:6px 0 0">挑选组件并配置后一键下载启动；Doris 可分别选择 FE / BE 机器。</p>
+      </div>
+    </div>
 
     <div class="steps" style="margin-top:14px">
       <div class="step" :class="{ active: step === 1, done: step > 1 }">1. 挑选组件</div>

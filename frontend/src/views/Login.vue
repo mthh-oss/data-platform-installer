@@ -41,29 +41,30 @@ async function submit() {
 </script>
 
 <template>
-  <section class="panel auth-panel">
-    <h2 style="margin-top:0">{{ mode === 'setup' ? '初始化主账号' : '运维登录' }}</h2>
-    <p class="muted" v-if="mode === 'setup'">
-      首次使用请设置主账号。密码至少 8 位，需包含字母，不能全是数字。
-    </p>
-    <p class="muted" v-else>多用户权限隔离，仅授权账号可进入。</p>
-
-    <div class="form-grid" style="margin-top:16px">
-      <div class="field">
-        <label>用户名</label>
-        <input v-model="username" autocomplete="username" />
+  <div class="auth-wrap">
+    <section class="auth-card">
+      <h1>{{ mode === 'setup' ? '初始化管理员' : '登录数据平台' }}</h1>
+      <p class="sub">
+        {{ mode === 'setup'
+          ? '首次使用请创建主账号。密码至少 8 位，需含字母，不能全是数字。'
+          : '请使用已授权账号登录。' }}
+      </p>
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <div class="field">
+          <label>用户名</label>
+          <input v-model="username" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
+        </div>
       </div>
-      <div class="field">
-        <label>密码</label>
-        <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
+      <div class="actions">
+        <button class="btn primary" style="width:100%" :disabled="loading" @click="submit">
+          {{ loading ? '提交中…' : mode === 'setup' ? '创建并进入' : '登录' }}
+        </button>
       </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn primary launch" :disabled="loading" @click="submit">
-        {{ loading ? '提交中…' : mode === 'setup' ? '创建主账号并进入' : '登录' }}
-      </button>
-    </div>
-    <p class="error" v-if="error">{{ error }}</p>
-  </section>
+      <p class="error" v-if="error">{{ error }}</p>
+    </section>
+  </div>
 </template>

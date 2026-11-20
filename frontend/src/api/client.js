@@ -79,6 +79,7 @@ export const api = {
   users: () => request('/api/users'),
   createUser: (body) => request('/api/users', { method: 'POST', body: JSON.stringify(body) }),
   updateUser: (id, body) => request(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  // personnel uses same user APIs (department/title/manager)
 
   hosts: () => request('/api/hosts'),
   createHost: (body) => request('/api/hosts', { method: 'POST', body: JSON.stringify(body) }),

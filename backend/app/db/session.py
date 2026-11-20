@@ -42,6 +42,13 @@ def _migrate_sqlite() -> None:
                 conn.execute(text("ALTER TABLE users ADD COLUMN display_name VARCHAR(64) DEFAULT ''"))
             if "enabled" not in cols:
                 conn.execute(text("ALTER TABLE users ADD COLUMN enabled BOOLEAN DEFAULT 1"))
+            if "department" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN department VARCHAR(128) DEFAULT ''"))
+            if "title" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN title VARCHAR(64) DEFAULT ''"))
+            if "manager_id" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN manager_id INTEGER"))
+
 
 
 def init_db() -> None:

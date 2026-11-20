@@ -5,6 +5,7 @@ import DeployJobs from './views/DeployJobs.vue'
 import Monitor from './views/Monitor.vue'
 import Overview from './views/Overview.vue'
 import Settings from './views/Settings.vue'
+import Personnel from './views/Personnel.vue'
 import Login from './views/Login.vue'
 
 const router = createRouter({
@@ -17,6 +18,7 @@ const router = createRouter({
     { path: '/jobs', name: 'jobs', component: DeployJobs },
     { path: '/jobs/:id', name: 'job-detail', component: DeployJobs, props: true },
     { path: '/monitor', name: 'monitor', component: Monitor },
+    { path: '/personnel', name: 'personnel', component: Personnel },
     { path: '/settings', name: 'settings', component: Settings },
   ],
 })

@@ -55,8 +55,12 @@ class User(Base):
     # admin | operator | viewer
     role: Mapped[str] = mapped_column(String(32), default="admin")
     display_name: Mapped[str] = mapped_column(String(64), default="")
+    department: Mapped[str] = mapped_column(String(128), default="")
+    title: Mapped[str] = mapped_column(String(64), default="")  # 岗位
+    manager_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 上级
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
 
 
 class Host(Base):
