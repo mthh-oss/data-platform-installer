@@ -15,7 +15,7 @@ const isAuth = computed(() => ['/login', '/setup'].includes(route.path))
 const modules = [
   {
     id: 'ops',
-    label: '编排',
+    label: '编排部署',
     title: '编排部署',
     home: '/workbench',
     match: (p) =>
@@ -32,7 +32,7 @@ const modules = [
   },
   {
     id: 'observe',
-    label: '观测',
+    label: '观测中心',
     title: '观测中心',
     home: '/alerts',
     match: (p) => ['/alerts', '/logs', '/monitor'].some((x) => p === x || p.startsWith(x + '/')),
@@ -44,7 +44,7 @@ const modules = [
   },
   {
     id: 'plugins',
-    label: '插件',
+    label: '插件市场',
     title: '插件市场',
     home: '/plugins',
     match: (p) => p === '/plugins' || p.startsWith('/plugins/'),
@@ -54,7 +54,7 @@ const modules = [
   },
   {
     id: 'admin',
-    label: '系统',
+    label: '系统管理',
     title: '系统管理',
     home: '/admin/users',
     match: (p) => p.startsWith('/admin'),
