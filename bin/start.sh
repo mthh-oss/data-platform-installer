@@ -4,7 +4,8 @@
 if [ -z "${BASH_VERSION:-}" ]; then
   exec bash "$0" "$@"
 fi
-set -euo pipefail
+set -eu
+# pipefail is bash-only; avoid for maximum compatibility
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"

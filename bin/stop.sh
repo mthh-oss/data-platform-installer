@@ -3,7 +3,7 @@
 if [ -z "${BASH_VERSION:-}" ]; then
   exec bash "$0" "$@"
 fi
-set -euo pipefail
+set -eu
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PID_DIR="$ROOT_DIR/logs"
