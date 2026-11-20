@@ -38,6 +38,15 @@ async function act(fn) {
   }
 }
 
+async function downloadAbnormal() {
+  if (!selectedId.value) return
+  try {
+    await api.downloadAbnormal(selectedId.value)
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
 onMounted(() => {
   refresh()
   timer = setInterval(refresh, 5000)
@@ -56,6 +65,7 @@ onUnmounted(() => timer && clearInterval(timer))
         <select v-model.number="selectedId" @change="refresh" style="background:#0d1524;border:1px solid var(--line);border-radius:10px;padding:8px 10px;">
           <option v-for="c in clusters" :key="c.id" :value="c.id">{{ c.name }} ({{ c.status }})</option>
         </select>
+        <button class="btn" :disabled="busy || !selectedId" @click="downloadAbnormal">下载异常日志</button>
         <button class="btn" :disabled="busy || !selectedId" @click="act(api.restart)">重启</button>
         <button class="btn danger" :disabled="busy || !selectedId" @click="act(api.stop)">停止</button>
       </div>

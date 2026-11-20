@@ -1,13 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.core.registry import registry
+from app.core.security import get_current_user
+from app.db.models import User
 from app.schemas import PluginInfo
 
 router = APIRouter(prefix="/plugins", tags=["plugins"])
 
 
 @router.get("", response_model=list[PluginInfo])
-def list_plugins() -> list[PluginInfo]:
+def list_plugins(_: User = Depends(get_current_user)) -> list[PluginInfo]:
     items: list[PluginInfo] = []
     for p in registry.list():
         items.append(
@@ -21,5 +23,4 @@ def list_plugins() -> list[PluginInfo]:
                 default_config=p.default_config(),
             )
         )
-
     return items

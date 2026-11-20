@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 
+
 const props = defineProps({ id: { type: [String, Number], default: null } })
 const route = useRoute()
 const router = useRouter()
@@ -54,6 +55,15 @@ async function refresh() {
 
 function openJob(id) {
   router.push(`/jobs/${id}`)
+}
+
+async function downloadCurrent() {
+  if (!current.value) return
+  try {
+    await api.downloadJobLogs(current.value.id)
+  } catch (e) {
+    error.value = e.message
+  }
 }
 
 function phaseClass(idx) {
@@ -126,8 +136,10 @@ watch(() => route.params.id, () => refresh())
 
         <p class="error" v-if="current.error">{{ current.error }}</p>
 
-        <div class="actions" v-if="current.status === 'succeeded'">
-          <router-link class="btn primary" to="/monitor">去监控看板</router-link>
+        <div class="actions">
+          <button class="btn" v-if="current" @click="downloadCurrent">下载本任务日志</button>
+          <router-link class="btn primary" v-if="current.status === 'succeeded'" to="/overview">去集群总览</router-link>
+          <router-link class="btn" v-if="current.status === 'failed'" to="/ai">AI 自检</router-link>
         </div>
 
         <div class="log">{{ logs || '（等待日志…）' }}</div>

@@ -5,16 +5,18 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from app.api import clusters, jobs, plugins
+from app.api import ai, auth, clusters, jobs, logs, plugins
+from app.core.ai_registry import ai_registry
 from app.core.compose_engine import compose_engine
 from app.core.config import settings
 from app.core.monitor import health_monitor
 from app.core.registry import registry
-from app.db.models import Cluster
+from app.core.security import get_current_user
+from app.db.models import Cluster, User
 from app.db.session import SessionLocal, init_db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -25,7 +27,9 @@ logger = logging.getLogger("dpi")
 async def lifespan(_: FastAPI):
     init_db()
     registry.discover()
+    ai_registry.discover()
     logger.info("loaded plugins: %s", [p.id for p in registry.list()])
+    logger.info("loaded AI providers: %s", [p.id for p in ai_registry.list()])
     yield
 
 
@@ -38,9 +42,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(plugins.router, prefix=settings.api_prefix)
 app.include_router(clusters.router, prefix=settings.api_prefix)
 app.include_router(jobs.router, prefix=settings.api_prefix)
+app.include_router(logs.router, prefix=settings.api_prefix)
+app.include_router(ai.router, prefix=settings.api_prefix)
 
 
 @app.get("/api/health")
@@ -50,12 +57,12 @@ def api_health() -> dict[str, Any]:
         "status": "ok",
         "docker_ok": docker.ok,
         "plugins": [p.id for p in registry.list()],
+        "ai_providers": [p.id for p in ai_registry.list()],
     }
 
 
 @app.get("/metrics", response_class=PlainTextResponse)
-def metrics() -> str:
-    """Prometheus-style metrics for all clusters/platforms."""
+def metrics(_: User = Depends(get_current_user)) -> str:
     lines: list[str] = [
         "# HELP dpi_platform_up 1 if platform health checks all pass",
         "# TYPE dpi_platform_up gauge",

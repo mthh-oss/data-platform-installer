@@ -155,6 +155,18 @@ class ComposeEngine:
             args.extend(services)
         return self._run(args, cwd=work_dir)
 
+    def container_logs(
+        self,
+        container_name: str,
+        tail: int = 500,
+        on_line: LogCallback | None = None,
+    ) -> CommandResult:
+        return self._run(
+            ["logs", "--tail", str(tail), container_name],
+            timeout=120,
+            on_line=on_line,
+        )
+
     def available(self) -> CommandResult:
         return self._run(["version"], timeout=30)
 

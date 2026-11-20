@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     health_interval_seconds: int = 15
     docker_bin: str = "docker"
+    jwt_secret: str = "dpi-change-me-in-production"
+    jwt_expire_hours: int = 24
+    ai_providers_dir: Path = backend_root / "ai_providers"
 
     class Config:
         env_prefix = "DPI_"
