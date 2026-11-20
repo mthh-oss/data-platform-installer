@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AiFloat from './components/AiFloat.vue'
-import { api, getUser, setToken, setUser } from './api/client'
+import { getUser, setToken, setUser } from './api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,6 +75,12 @@ function isActive(path) {
   if (path === '/workbench') return route.path === '/workbench' || route.path === '/'
   return route.path === path || route.path.startsWith(path + '/')
 }
+
+const railMode = computed(() => {
+  if (route.path.startsWith('/admin')) return 'admin'
+  if (route.path.startsWith('/plugins')) return 'plugins'
+  return 'home'
+})
 </script>
 
 <template>
@@ -83,49 +89,57 @@ function isActive(path) {
       <header class="topbar">
         <div class="brand">
           <div class="brand-mark">DS</div>
-          <div class="brand-name">DataStack</div>
+          <div class="brand-name">Data<span>Stack</span></div>
         </div>
         <div class="top-center">
-          <span class="muted" style="font-size:13px">插件化大数据底座编排平台</span>
+          <span class="top-tagline">插件化大数据底座编排</span>
         </div>
         <div class="top-right">
-          <button class="btn primary" style="padding:4px 12px" @click="go('/orchestrate')">新建编排</button>
-          <span>{{ user?.display_name || user?.username }}</span>
-          <div class="avatar">{{ (user?.display_name || user?.username || 'U').slice(0, 1) }}</div>
+          <button class="btn primary" @click="go('/orchestrate')">新建编排</button>
+          <div class="user-chip">
+            <div class="avatar">{{ (user?.display_name || user?.username || 'U').slice(0, 1) }}</div>
+            <span>{{ user?.display_name || user?.username }}</span>
+          </div>
           <button class="link-btn" @click="logout">退出</button>
         </div>
       </header>
 
       <div class="body">
         <aside class="rail">
-          <button class="rail-item" :class="{ active: !route.path.startsWith('/admin') }" title="工作台" @click="go('/workbench')">
+          <button class="rail-item" :class="{ active: railMode === 'home' }" title="工作台" @click="go('/workbench')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l8-6 8 6v9a1 1 0 01-1 1h-5v-5H10v5H5a1 1 0 01-1-1v-9z"/></svg>
           </button>
-          <button class="rail-item" :class="{ active: route.path.startsWith('/plugins') }" title="插件市场" @click="go('/plugins')">
+          <button class="rail-item" :class="{ active: railMode === 'plugins' }" title="插件市场" @click="go('/plugins')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2.1 2.1M15.7 15.7l2.1 2.1M6.2 17.8l2.1-2.1M15.7 8.3l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          <button class="rail-item" :class="{ active: route.path.startsWith('/admin') }" title="系统管理" @click="go('/admin/settings')">
+          <button class="rail-item" :class="{ active: railMode === 'admin' }" title="系统管理" @click="go('/admin/settings')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
           </button>
           <div class="rail-spacer"></div>
         </aside>
 
         <aside class="side">
-          <div class="side-head">平台资源</div>
-          <input v-model="sideFilter" class="side-search" placeholder="搜索菜单" />
-          <nav class="side-nav" v-for="g in sideGroups" :key="g.title">
-            <div class="muted" style="padding:8px 10px 4px;font-size:11px">{{ g.title }}</div>
-            <button
-              v-for="item in g.items"
-              :key="item.path"
-              :class="{ active: isActive(item.path) }"
-              @click="go(item.path)"
-            >{{ item.label }}</button>
-          </nav>
+          <div class="side-head">导航</div>
+          <input v-model="sideFilter" class="side-search" placeholder="搜索菜单…" />
+          <div v-for="g in sideGroups" :key="g.title">
+            <div class="side-group-title">{{ g.title }}</div>
+            <nav class="side-nav">
+              <button
+                v-for="item in g.items"
+                :key="item.path"
+                :class="{ active: isActive(item.path) }"
+                @click="go(item.path)"
+              >{{ item.label }}</button>
+            </nav>
+          </div>
         </aside>
 
         <main class="main">
-          <div class="crumb">{{ crumb.a }} / <b>{{ crumb.b }}</b></div>
+          <div class="crumb">
+            <span>{{ crumb.a }}</span>
+            <span class="crumb-sep">/</span>
+            <b>{{ crumb.b }}</b>
+          </div>
           <router-view />
         </main>
       </div>

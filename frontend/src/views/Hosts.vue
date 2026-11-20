@@ -55,11 +55,11 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="panel">
-    <div class="panel-title">
+  <section>
+    <div class="page-hero">
       <div>
-        <h2>主机资源池</h2>
-        <p class="muted" style="margin:6px 0 0">全局资源，不绑定某实例；编排时按需挑选。Agent 离线标红。</p>
+        <h1>主机资源池</h1>
+        <p class="lead">全局资源，不绑定某实例；编排时按需挑选。Agent 离线标红。</p>
       </div>
       <div class="toolbar">
         <button class="btn" :class="{ primary: view === 'table' }" @click="view = 'table'">表格</button>
@@ -69,6 +69,7 @@ onMounted(load)
         <button class="btn primary" @click="showAdd = !showAdd">纳管主机</button>
       </div>
     </div>
+    <div class="panel">
 
     <div v-if="showAdd" class="form-grid" style="margin-bottom:14px">
       <div class="field"><label>主机名</label><input v-model="form.name" /></div>
@@ -82,7 +83,8 @@ onMounted(load)
       </div>
     </div>
 
-    <table class="table" v-if="view === 'table'">
+    <div class="table-wrap" v-if="view === 'table'">
+    <table class="table">
       <thead>
         <tr>
           <th>主机名</th><th>IP</th><th>Agent</th><th>标签</th><th>状态</th><th>操作</th>
@@ -105,6 +107,7 @@ onMounted(load)
         </tr>
       </tbody>
     </table>
+    </div>
 
     <div class="topo" v-else>
       <div class="topo-node ok-node" v-for="h in filtered" :key="h.id" @click="router.push(`/hosts/${h.id}`)">
@@ -115,5 +118,6 @@ onMounted(load)
     </div>
     <div class="empty" v-if="!filtered.length">暂无主机</div>
     <p class="error" v-if="error">{{ error }}</p>
+    </div>
   </section>
 </template>

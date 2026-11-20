@@ -71,11 +71,11 @@ onUnmounted(() => timer && clearInterval(timer))
 </script>
 
 <template>
-  <section class="panel">
-    <div class="panel-title">
+  <section>
+    <div class="page-hero">
       <div>
-        <h2>实例管理</h2>
-        <p class="muted" style="margin:6px 0 0">实例 = 编排成功产物；此处展示<strong>运行状态</strong>，不是部署任务状态。</p>
+        <h1>实例管理</h1>
+        <p class="lead">实例是编排成功产物。这里只展示运行状态，不与部署任务状态混用。</p>
       </div>
       <div class="toolbar">
         <input v-model="q" class="select" style="width:160px" placeholder="搜索实例" />
@@ -95,6 +95,8 @@ onUnmounted(() => timer && clearInterval(timer))
       </div>
     </div>
 
+    <div class="panel">
+    <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
@@ -126,7 +128,9 @@ onUnmounted(() => timer && clearInterval(timer))
         </tr>
       </tbody>
     </table>
-    <div class="empty" v-if="!filtered.length">暂无实例</div>
+    </div>
+    <div class="empty" v-if="!filtered.length" style="margin-top:12px">暂无实例</div>
     <p class="error" v-if="error">{{ error }}</p>
+    </div>
   </section>
 </template>

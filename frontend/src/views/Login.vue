@@ -57,17 +57,22 @@ async function submit() {
 <template>
   <div class="auth-wrap">
     <aside class="auth-brand">
-      <div class="brand-mark" style="width:40px;height:40px;font-size:14px;margin-bottom:16px">DS</div>
+      <div class="brand-mark" style="width:44px;height:44px;font-size:14px;margin-bottom:20px;border-radius:12px">DS</div>
       <h1>DataStack</h1>
       <p>插件化大数据底座编排平台。勾选组件、分配主机、一键部署；插件市场扩展，实例运维配套。</p>
+      <div class="auth-points">
+        <div><i></i> 插件驱动，不写死组件页面</div>
+        <div><i></i> 编排优先，部署任务与实例状态分离</div>
+        <div><i></i> 内置 Doris / Flink / MySQL / CDC / DS</div>
+      </div>
     </aside>
     <div class="auth-form-wrap">
       <section class="auth-card">
-        <h2>{{ mode === 'setup' ? '初始化管理员' : '账号登录' }}</h2>
+        <h2>{{ mode === 'setup' ? '初始化管理员' : '欢迎回来' }}</h2>
         <p class="sub">
           {{ mode === 'setup'
             ? '首次使用请创建主账号。密码至少 8 位，需含字母。'
-            : '本地账号登录；LDAP 在平台设置中对接。' }}
+            : '使用本地账号登录，进入工作台开始编排。' }}
         </p>
         <div class="form-grid" style="grid-template-columns:1fr">
           <div class="field"><label>账号</label><input v-model="username" autocomplete="username" /></div>
@@ -87,7 +92,7 @@ async function submit() {
           </label>
         </div>
         <div class="actions">
-          <button class="btn primary" style="width:100%" :disabled="loading" @click="submit">
+          <button class="btn primary" style="width:100%;padding:10px 14px" :disabled="loading" @click="submit">
             {{ loading ? '提交中…' : mode === 'setup' ? '创建并进入' : '登录' }}
           </button>
         </div>

@@ -81,14 +81,15 @@ watch(() => route.params.jobId, refresh)
 </script>
 
 <template>
-  <section class="panel">
-    <div class="panel-title">
+  <section>
+    <div class="page-hero">
       <div>
-        <h2>部署任务</h2>
-        <p class="muted" style="margin:6px 0 0">状态仅使用：排队 / 部署中 / 成功 / 失败 / 已取消（勿与实例运行态混用）</p>
+        <h1>部署任务</h1>
+        <p class="lead">状态仅使用：排队 / 部署中 / 成功 / 失败 / 已取消。勿与实例运行态混用。</p>
       </div>
       <button class="btn ghost" @click="refresh">刷新</button>
     </div>
+    <div class="panel">
 
     <div class="jobs-layout">
       <div>
@@ -160,5 +161,6 @@ watch(() => route.params.jobId, refresh)
       <div v-else class="muted">选择左侧任务查看部署进度与日志</div>
     </div>
     <p class="error" v-if="error">{{ error }}</p>
+    </div>
   </section>
 </template>
