@@ -1,38 +1,56 @@
 services:
-  doris-fe:
+{% for fe in fe_nodes %}
+  doris-fe-{{ fe.id }}:
     image: apache/doris:fe-{{ image_tag }}
-    container_name: {{ _project }}_doris-fe
-    hostname: doris-fe
+    container_name: {{ _project }}_doris-fe-{{ fe.id }}
+    hostname: doris-fe-{{ fe.id }}
     environment:
-      - FE_SERVERS=fe1:127.0.0.1:{{ edit_log_port }}
-      - FE_ID=1
+      - FE_SERVERS={{ fe_servers }}
+      - FE_ID={{ fe.fe_id }}
     ports:
-      - "{{ http_port }}:8030"
-      - "{{ query_port }}:9030"
+      - "{{ fe.http_port }}:8030"
+      - "{{ fe.query_port }}:9030"
     volumes:
-      - doris_fe_meta:/opt/apache-doris/fe/doris-meta
+      - doris_fe_meta_{{ fe.id }}:/opt/apache-doris/fe/doris-meta
     networks:
       - dpi_net
+    labels:
+      dpi.host_id: "{{ fe.host_id }}"
+      dpi.host_ip: "{{ fe.ip }}"
+      dpi.role: "fe"
+{% endfor %}
 
-  doris-be:
+{% for be in be_nodes %}
+  doris-be-{{ be.id }}:
     image: apache/doris:be-{{ image_tag }}
-    container_name: {{ _project }}_doris-be
-    hostname: doris-be
+    container_name: {{ _project }}_doris-be-{{ be.id }}
+    hostname: doris-be-{{ be.id }}
     depends_on:
-      - doris-fe
+{% for fe in fe_nodes %}
+      - doris-fe-{{ fe.id }}
+{% endfor %}
     environment:
-      - FE_SERVERS=fe1:doris-fe:{{ edit_log_port }}
-      - BE_ADDR=doris-be:9050
+      - FE_SERVERS={{ fe_servers }}
+      - BE_ADDR={{ be.ip }}:9050
     ports:
-      - "{{ be_web_port }}:8040"
+      - "{{ be.web_port }}:8040"
     volumes:
-      - doris_be_storage:/opt/apache-doris/be/storage
+      - doris_be_storage_{{ be.id }}:/opt/apache-doris/be/storage
     networks:
       - dpi_net
+    labels:
+      dpi.host_id: "{{ be.host_id }}"
+      dpi.host_ip: "{{ be.ip }}"
+      dpi.role: "be"
+{% endfor %}
 
 volumes:
-  doris_fe_meta:
-  doris_be_storage:
+{% for fe in fe_nodes %}
+  doris_fe_meta_{{ fe.id }}:
+{% endfor %}
+{% for be in be_nodes %}
+  doris_be_storage_{{ be.id }}:
+{% endfor %}
 
 networks:
   dpi_net:

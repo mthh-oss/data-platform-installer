@@ -31,6 +31,8 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
+    role: str = "admin"
+    display_name: str = ""
 
 
 class AuthStatusOut(BaseModel):
@@ -57,11 +59,18 @@ def setup_admin(body: SetupBody, db: Session = Depends(get_db)) -> TokenOut:
         username=body.username.strip(),
         password_hash=hash_password(body.password),
         role="admin",
+        display_name=body.username.strip(),
+        enabled=True,
     )
     db.add(user)
     db.commit()
     token = create_access_token(user.username)
-    return TokenOut(access_token=token, username=user.username)
+    return TokenOut(
+        access_token=token,
+        username=user.username,
+        role=user.role,
+        display_name=user.display_name,
+    )
 
 
 @router.post("/login", response_model=TokenOut)
@@ -69,10 +78,22 @@ def login(body: LoginBody, db: Session = Depends(get_db)) -> TokenOut:
     user = db.query(User).filter(User.username == body.username).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
+    if not getattr(user, "enabled", True):
+        raise HTTPException(status_code=403, detail="账号已禁用")
     token = create_access_token(user.username)
-    return TokenOut(access_token=token, username=user.username)
+    return TokenOut(
+        access_token=token,
+        username=user.username,
+        role=user.role,
+        display_name=user.display_name or user.username,
+    )
 
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)) -> dict:
-    return {"username": user.username, "role": user.role}
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "display_name": user.display_name or user.username,
+    }

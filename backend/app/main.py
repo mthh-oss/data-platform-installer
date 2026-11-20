@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from app.api import ai, auth, clusters, jobs, logs, plugins
+from app.api import ai, auth, clusters, hosts, jobs, logs, plugins, users
 from app.core.ai_registry import ai_registry
 from app.core.compose_engine import compose_engine
 from app.core.config import settings
@@ -18,6 +18,7 @@ from app.core.registry import registry
 from app.core.security import get_current_user
 from app.db.models import Cluster, User
 from app.db.session import SessionLocal, init_db
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("dpi")
@@ -43,6 +44,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(users.router, prefix=settings.api_prefix)
+app.include_router(hosts.router, prefix=settings.api_prefix)
 app.include_router(plugins.router, prefix=settings.api_prefix)
 app.include_router(clusters.router, prefix=settings.api_prefix)
 app.include_router(jobs.router, prefix=settings.api_prefix)

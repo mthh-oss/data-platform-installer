@@ -61,6 +61,18 @@ class DiagnoseOut(BaseModel):
     context_summary: str
 
 
+class ChatIn(BaseModel):
+    message: str = Field(min_length=1)
+    cluster_id: int | None = None
+    with_context: bool = False
+
+
+class ChatOut(BaseModel):
+    provider: str
+    answer: str
+
+
+
 @router.get("/providers", response_model=list[AIProviderOut])
 def list_providers(_: User = Depends(get_current_user)) -> list[AIProviderOut]:
     return [AIProviderOut(id=p.id, name=p.name) for p in ai_registry.list()]
@@ -182,3 +194,37 @@ def diagnose(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"AI 调用失败: {exc}") from exc
     return DiagnoseOut(provider=provider_id, answer=answer, context_summary=summary)
+
+
+@router.post("/chat", response_model=ChatOut)
+def chat(
+    body: ChatIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> ChatOut:
+    provider_id = _get_setting(db, "ai.provider", "deepseek")
+    api_key = _get_setting(db, "ai.api_key", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="请先在「设置」中配置 AI API Key")
+    try:
+        provider = ai_registry.get(provider_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    messages = [
+        {
+            "role": "system",
+            "content": "你是数据平台运维助手，帮助排查 Doris/Flink/MySQL/调度等问题。用中文简洁回答。",
+        }
+    ]
+    user_content = body.message
+    if body.with_context:
+        _, detail = _build_context(db, body.cluster_id)
+        user_content = f"{body.message}\n\n----- 集群上下文 -----\n{detail[:10000]}"
+    messages.append({"role": "user", "content": user_content})
+    try:
+        answer = provider.chat(messages, api_key=api_key)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"AI 调用失败: {exc}") from exc
+    return ChatOut(provider=provider_id, answer=answer)
+

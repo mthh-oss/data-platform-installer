@@ -13,17 +13,35 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
+def _table_cols(conn, table: str) -> set[str]:
+    rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+    return {row[1] for row in rows}
+
+
 def _migrate_sqlite() -> None:
-    """Add new columns on existing SQLite DB without wiping data."""
     with engine.begin() as conn:
-        rows = conn.execute(text("PRAGMA table_info(deploy_jobs)")).fetchall()
-        if not rows:
-            return
-        names = {row[1] for row in rows}
-        if "phase" not in names:
-            conn.execute(text("ALTER TABLE deploy_jobs ADD COLUMN phase VARCHAR(32) DEFAULT 'pending'"))
-        if "progress" not in names:
-            conn.execute(text("ALTER TABLE deploy_jobs ADD COLUMN progress INTEGER DEFAULT 0"))
+        # deploy_jobs
+        cols = _table_cols(conn, "deploy_jobs")
+        if cols:
+            if "phase" not in cols:
+                conn.execute(text("ALTER TABLE deploy_jobs ADD COLUMN phase VARCHAR(32) DEFAULT 'pending'"))
+            if "progress" not in cols:
+                conn.execute(text("ALTER TABLE deploy_jobs ADD COLUMN progress INTEGER DEFAULT 0"))
+            if "created_by" not in cols:
+                conn.execute(text("ALTER TABLE deploy_jobs ADD COLUMN created_by INTEGER"))
+
+        # clusters
+        cols = _table_cols(conn, "clusters")
+        if cols and "owner_id" not in cols:
+            conn.execute(text("ALTER TABLE clusters ADD COLUMN owner_id INTEGER"))
+
+        # users
+        cols = _table_cols(conn, "users")
+        if cols:
+            if "display_name" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN display_name VARCHAR(64) DEFAULT ''"))
+            if "enabled" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN enabled BOOLEAN DEFAULT 1"))
 
 
 def init_db() -> None:

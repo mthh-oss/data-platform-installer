@@ -12,6 +12,11 @@ from sqlalchemy.orm import Session
 from app.core.compose_engine import compose_engine
 from app.core.deployer import create_cluster, start_job
 from app.core.monitor import health_monitor
+from app.core.rbac import (
+    filter_clusters_for_user,
+    get_cluster_for_user,
+    require_write_user,
+)
 from app.core.registry import registry
 from app.core.security import get_current_user
 from app.db.models import Cluster, DeployJob, User
@@ -55,20 +60,20 @@ def _to_out(c: Cluster) -> ClusterOut:
 @router.get("", response_model=list[ClusterOut])
 def list_clusters(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> list[ClusterOut]:
-    rows = db.query(Cluster).order_by(Cluster.id.desc()).all()
-    return [_to_out(c) for c in rows]
+    q = filter_clusters_for_user(db.query(Cluster), user).order_by(Cluster.id.desc())
+    return [_to_out(c) for c in q.all()]
 
 
 @router.post("", response_model=ClusterOut)
 def create(
     body: ClusterCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(require_write_user),
 ) -> ClusterOut:
     try:
-        cluster = create_cluster(db, body.name, body.platforms, body.configs)
+        cluster = create_cluster(db, body.name, body.platforms, body.configs, owner_id=user.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except KeyError as exc:
@@ -80,23 +85,18 @@ def create(
 def get_cluster(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> ClusterOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
-    return _to_out(cluster)
+    return _to_out(get_cluster_for_user(db, cluster_id, user))
 
 
 @router.post("/{cluster_id}/deploy", response_model=JobOut)
 def deploy(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(require_write_user),
 ) -> JobOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
+    get_cluster_for_user(db, cluster_id, user)
     job_id = start_job(cluster_id, "deploy")
     job = db.get(DeployJob, job_id)
     assert job
@@ -107,11 +107,9 @@ def deploy(
 def stop(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(require_write_user),
 ) -> JobOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
+    get_cluster_for_user(db, cluster_id, user)
     job_id = start_job(cluster_id, "stop")
     job = db.get(DeployJob, job_id)
     assert job
@@ -122,11 +120,9 @@ def stop(
 def restart(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(require_write_user),
 ) -> JobOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
+    get_cluster_for_user(db, cluster_id, user)
     job_id = start_job(cluster_id, "restart")
     job = db.get(DeployJob, job_id)
     assert job
@@ -137,12 +133,9 @@ def restart(
 def health(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> HealthOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
-
+    cluster = get_cluster_for_user(db, cluster_id, user)
     platforms: list[str] = json.loads(cluster.platforms_json or "[]")
     configs: dict[str, Any] = json.loads(cluster.config_json or "{}")
     docker_ps = ""
@@ -171,12 +164,9 @@ def health(
 def overview(
     cluster_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> OverviewOut:
-    cluster = db.get(Cluster, cluster_id)
-    if not cluster:
-        raise HTTPException(status_code=404, detail="cluster not found")
-
+    cluster = get_cluster_for_user(db, cluster_id, user)
     platforms: list[str] = json.loads(cluster.platforms_json or "[]")
     configs: dict[str, Any] = json.loads(cluster.config_json or "{}")
     docker_ps = ""

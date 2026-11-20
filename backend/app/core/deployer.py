@@ -96,7 +96,13 @@ def validate_cluster_request(platforms: list[str], configs: dict[str, dict[str, 
     return errors
 
 
-def create_cluster(db: Session, name: str, platforms: list[str], configs: dict[str, Any]) -> Cluster:
+def create_cluster(
+    db: Session,
+    name: str,
+    platforms: list[str],
+    configs: dict[str, Any],
+    owner_id: int | None = None,
+) -> Cluster:
     errors = validate_cluster_request(platforms, configs)
     if errors:
         raise ValueError("; ".join(errors))
@@ -107,6 +113,7 @@ def create_cluster(db: Session, name: str, platforms: list[str], configs: dict[s
         name=name,
         project_name=project,
         status="created",
+        owner_id=owner_id,
         platforms_json=json.dumps(platforms),
         config_json=json.dumps(configs),
         work_dir=str(work_dir),

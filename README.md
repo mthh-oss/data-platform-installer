@@ -1,6 +1,6 @@
 # Data Platform Installer
 
-轻量 CDH 体验控制台：登录鉴权、页面挑选组件并**一键下载镜像并启动**、集群总览、异常日志下载、DeepSeek AI 自检（可扩展其他 AI）。
+轻量 FineBI/CDH 风格控制台：多用户权限隔离、主机库存选 FE/BE、一键下载启动、集群总览、异常日志下载、设置中心、右下角可收缩 AI 助手。
 
 - Apache Doris
 - Apache Flink

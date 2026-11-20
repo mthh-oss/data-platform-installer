@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { api, getToken, setToken } from './api/client'
+import { api, getToken, setToken, setUser } from './api/client'
 import Wizard from './views/Wizard.vue'
 import DeployJobs from './views/DeployJobs.vue'
 import Monitor from './views/Monitor.vue'
 import Overview from './views/Overview.vue'
-import AIAssist from './views/AIAssist.vue'
+import Settings from './views/Settings.vue'
 import Login from './views/Login.vue'
 
 const router = createRouter({
@@ -17,7 +17,7 @@ const router = createRouter({
     { path: '/jobs', name: 'jobs', component: DeployJobs },
     { path: '/jobs/:id', name: 'job-detail', component: DeployJobs, props: true },
     { path: '/monitor', name: 'monitor', component: Monitor },
-    { path: '/ai', name: 'ai', component: AIAssist },
+    { path: '/settings', name: 'settings', component: Settings },
   ],
 })
 
@@ -28,10 +28,12 @@ router.beforeEach(async (to) => {
     const st = await api.authStatus()
     if (!st.initialized) return '/login'
     if (!token) return '/login'
-    await api.me()
+    const me = await api.me()
+    setUser(me)
     return true
   } catch {
     setToken('')
+    setUser(null)
     return '/login'
   }
 })

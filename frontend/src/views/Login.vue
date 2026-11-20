@@ -1,10 +1,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api, setToken } from '../api/client'
+import { api, setToken, setUser } from '../api/client'
 
 const router = useRouter()
-const mode = ref('login') // login | setup
+const mode = ref('login')
 const username = ref('admin')
 const password = ref('')
 const error = ref('')
@@ -26,6 +26,11 @@ async function submit() {
     const fn = mode.value === 'setup' ? api.setup : api.login
     const res = await fn({ username: username.value, password: password.value })
     setToken(res.access_token)
+    setUser({
+      username: res.username,
+      role: res.role,
+      display_name: res.display_name || res.username,
+    })
     router.replace('/')
   } catch (e) {
     error.value = e.message
@@ -41,7 +46,7 @@ async function submit() {
     <p class="muted" v-if="mode === 'setup'">
       首次使用请设置主账号。密码至少 8 位，需包含字母，不能全是数字。
     </p>
-    <p class="muted" v-else>仅运维人员可进入控制台。</p>
+    <p class="muted" v-else>多用户权限隔离，仅授权账号可进入。</p>
 
     <div class="form-grid" style="margin-top:16px">
       <div class="field">
@@ -50,7 +55,7 @@ async function submit() {
       </div>
       <div class="field">
         <label>密码</label>
-        <input v-model="password" type="password" autocomplete="new-password" @keyup.enter="submit" />
+        <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
       </div>
     </div>
 
