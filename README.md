@@ -25,7 +25,9 @@
 ```bash
 cd data-platform-installer
 chmod +x bin/*.sh
-./bin/start.sh      # 启动 API:8000 + Web:5173
+./bin/start.sh      # 推荐：启动 API:8000 + Web:5173
+# 或：bash bin/start.sh
+# 不要用 dash 的纯 sh 特性来理解脚本；若写成 sh bin/start.sh 也会自动转 bash
 ./bin/status.sh     # 查看状态
 ./bin/stop.sh       # 停止
 ```

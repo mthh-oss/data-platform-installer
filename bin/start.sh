@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # One-click start: API (8000) + Web (5173)
+# Compatible when invoked as `sh start.sh` — re-exec with bash.
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
