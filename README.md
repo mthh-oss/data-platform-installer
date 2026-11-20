@@ -18,29 +18,48 @@
 - Docker Desktop（或等价 Docker Engine + Compose v2），且 `docker` 在 PATH 中
   - 控制面可在无 Docker 时启动；真正 `compose up` 需要本机 Docker
 
-## 快速启动
+## 快速启动（一键脚本）
 
-### 1. 后端
+### Linux 服务器
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```bash
+cd data-platform-installer
+chmod +x bin/*.sh
+./bin/start.sh      # 启动 API:8000 + Web:5173
+./bin/status.sh     # 查看状态
+./bin/stop.sh       # 停止
 ```
 
-健康检查：<http://127.0.0.1:8000/api/health>
+日志目录：`logs/api.log`、`logs/web.log`
 
-### 2. 前端
+### Windows
 
 ```powershell
+cd data-platform-installer
+.\bin\start.ps1
+```
+
+### 手动启动（可选）
+
+后端：
+
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+前端：
+
+```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-打开：<http://127.0.0.1:5173>
+健康检查：<http://127.0.0.1:8000/api/health>  
+页面：<http://127.0.0.1:5173>
 
 ### 3. 最小验证路径（MySQL + Flink）
 
