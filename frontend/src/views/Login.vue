@@ -7,6 +7,8 @@ const router = useRouter()
 const mode = ref('login')
 const username = ref('admin')
 const password = ref('')
+const authType = ref('local')
+const remember = ref(true)
 const error = ref('')
 const loading = ref(false)
 
@@ -14,6 +16,8 @@ onMounted(async () => {
   try {
     const st = await api.authStatus()
     mode.value = st.initialized ? 'login' : 'setup'
+    const saved = localStorage.getItem('dpi_remember_user')
+    if (saved) username.value = saved
   } catch (e) {
     error.value = e.message
   }
@@ -21,6 +25,14 @@ onMounted(async () => {
 
 async function submit() {
   error.value = ''
+  if (!username.value.trim()) {
+    error.value = '请输入账号'
+    return
+  }
+  if (!password.value) {
+    error.value = '请输入密码'
+    return
+  }
   loading.value = true
   try {
     const fn = mode.value === 'setup' ? api.setup : api.login
@@ -31,7 +43,9 @@ async function submit() {
       role: res.role,
       display_name: res.display_name || res.username,
     })
-    router.replace('/')
+    if (remember.value) localStorage.setItem('dpi_remember_user', username.value)
+    else localStorage.removeItem('dpi_remember_user')
+    router.replace('/clusters')
   } catch (e) {
     error.value = e.message
   } finally {
@@ -42,29 +56,47 @@ async function submit() {
 
 <template>
   <div class="auth-wrap">
-    <section class="auth-card">
-      <h1>{{ mode === 'setup' ? '初始化管理员' : '登录数据平台' }}</h1>
-      <p class="sub">
-        {{ mode === 'setup'
-          ? '首次使用请创建主账号。密码至少 8 位，需含字母，不能全是数字。'
-          : '请使用已授权账号登录。' }}
-      </p>
-      <div class="form-grid" style="grid-template-columns:1fr">
-        <div class="field">
-          <label>用户名</label>
-          <input v-model="username" autocomplete="username" />
+    <aside class="auth-brand">
+      <div class="brand-mark" style="width:40px;height:40px;font-size:18px;margin-bottom:16px">D</div>
+      <h1>DataCluster 管控平台</h1>
+      <p>一站式大数据集群运维平台。纳管 Doris / Flink / MySQL / Flink CDC / DolphinScheduler，对标 CDH 核心能力，交互更轻。</p>
+    </aside>
+    <div class="auth-form-wrap">
+      <section class="auth-card">
+        <h2>{{ mode === 'setup' ? '初始化管理员' : '账号登录' }}</h2>
+        <p class="sub">
+          {{ mode === 'setup'
+            ? '首次使用请创建主账号。密码至少 8 位，需含字母，不能全是数字。'
+            : '支持本地账号（LDAP 对接见平台设置）。' }}
+        </p>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="field">
+            <label>账号</label>
+            <input v-model="username" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label>密码</label>
+            <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
+          </div>
+          <div class="field" v-if="mode === 'login'">
+            <label>登录方式</label>
+            <select v-model="authType">
+              <option value="local">本地账号</option>
+              <option value="ldap" disabled>LDAP（平台设置启用后可用）</option>
+            </select>
+          </div>
+          <label v-if="mode === 'login'" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub)">
+            <input type="checkbox" v-model="remember" /> 记住账号
+          </label>
         </div>
-        <div class="field">
-          <label>密码</label>
-          <input v-model="password" type="password" autocomplete="current-password" @keyup.enter="submit" />
+        <div class="actions">
+          <button class="btn primary" style="width:100%" :disabled="loading" @click="submit">
+            {{ loading ? '提交中…' : mode === 'setup' ? '创建并进入' : '登录' }}
+          </button>
         </div>
-      </div>
-      <div class="actions">
-        <button class="btn primary" style="width:100%" :disabled="loading" @click="submit">
-          {{ loading ? '提交中…' : mode === 'setup' ? '创建并进入' : '登录' }}
-        </button>
-      </div>
-      <p class="error" v-if="error">{{ error }}</p>
-    </section>
+        <p class="muted" style="margin-top:12px;font-size:12px" v-if="mode === 'login'">忘记密码：二期开放，请联系管理员重置。</p>
+        <p class="error" v-if="error">{{ error }}</p>
+      </section>
+    </div>
   </div>
 </template>

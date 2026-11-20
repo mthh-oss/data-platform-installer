@@ -105,7 +105,7 @@ async function oneClickStart() {
     }
     const cluster = await api.createCluster(body)
     const job = await api.deploy(cluster.id)
-    router.push(`/jobs/${job.id}`)
+    router.push(`/c/${cluster.id}/tasks/${job.id}`)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -179,7 +179,7 @@ async function oneClickStart() {
                 {{ h.name }} ({{ h.ip }}) {{ h.labels ? '['+h.labels+']' : '' }}
               </label>
               <p class="muted" v-if="!hostOptions(prop).length" style="margin:0">
-                暂无可用主机，请先到「设置 → 主机库存」添加。
+                暂无可用主机，请先到「主机管理」添加。
               </p>
             </div>
 

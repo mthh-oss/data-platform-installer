@@ -36,8 +36,8 @@ async function save() {
   <section class="panel">
     <div class="panel-title">
       <div>
-        <h2>系统设置</h2>
-        <p class="muted" style="margin:6px 0 0">AI 等系统参数在此配置；人员关系请到「管理系统 / 人员关系」。</p>
+        <h2>平台设置</h2>
+        <p class="muted" style="margin:6px 0 0">AI / 主题 / 通知等；人员关系见「系统管理 → 人员关系」。</p>
       </div>
     </div>
 
