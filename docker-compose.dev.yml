@@ -1,0 +1,15 @@
+# Optional: run control-plane API in Docker (still needs Docker socket for deploying other stacks)
+services:
+  dpi-api:
+    image: python:3.11-slim
+    working_dir: /app/backend
+    volumes:
+      - ./:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      bash -lc "pip install -r requirements.txt &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      DPI_DOCKER_BIN: docker

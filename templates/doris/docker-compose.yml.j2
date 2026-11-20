@@ -1,0 +1,39 @@
+services:
+  doris-fe:
+    image: apache/doris:fe-{{ image_tag }}
+    container_name: {{ _project }}_doris-fe
+    hostname: doris-fe
+    environment:
+      - FE_SERVERS=fe1:127.0.0.1:{{ edit_log_port }}
+      - FE_ID=1
+    ports:
+      - "{{ http_port }}:8030"
+      - "{{ query_port }}:9030"
+    volumes:
+      - doris_fe_meta:/opt/apache-doris/fe/doris-meta
+    networks:
+      - dpi_net
+
+  doris-be:
+    image: apache/doris:be-{{ image_tag }}
+    container_name: {{ _project }}_doris-be
+    hostname: doris-be
+    depends_on:
+      - doris-fe
+    environment:
+      - FE_SERVERS=fe1:doris-fe:{{ edit_log_port }}
+      - BE_ADDR=doris-be:9050
+    ports:
+      - "{{ be_web_port }}:8040"
+    volumes:
+      - doris_be_storage:/opt/apache-doris/be/storage
+    networks:
+      - dpi_net
+
+volumes:
+  doris_fe_meta:
+  doris_be_storage:
+
+networks:
+  dpi_net:
+    driver: bridge

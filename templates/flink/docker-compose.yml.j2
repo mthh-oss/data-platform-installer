@@ -1,0 +1,32 @@
+services:
+  flink-jobmanager:
+    image: flink:{{ image_tag }}
+    container_name: {{ _project }}_flink-jobmanager
+    command: jobmanager
+    ports:
+      - "{{ ui_port }}:8081"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: {{ task_slots }}
+        parallelism.default: 1
+    networks:
+      - dpi_net
+
+  flink-taskmanager:
+    image: flink:{{ image_tag }}
+    container_name: {{ _project }}_flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: {{ task_slots }}
+        taskmanager.memory.process.size: {{ tm_memory }}
+    networks:
+      - dpi_net
+
+networks:
+  dpi_net:
+    driver: bridge

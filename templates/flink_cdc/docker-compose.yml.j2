@@ -1,0 +1,22 @@
+services:
+  flink-cdc-sidecar:
+    image: flink:{{ flink_image_tag }}
+    container_name: {{ _project }}_flink-cdc-sidecar
+    working_dir: /opt/flink-cdc
+    volumes:
+      - ./jobs:/opt/flink-cdc/jobs:ro
+      - ./scripts:/opt/flink-cdc/scripts:ro
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - |
+        echo "[flink-cdc] sidecar ready"
+        echo "Submit example CDC job after Flink JM is up:"
+        echo "  docker exec {{ _project }}_flink-jobmanager flink run -d /opt/flink/usrlib/..."
+        echo "Job SQL skeleton mounted at /opt/flink-cdc/jobs/mysql_cdc_demo.sql"
+        tail -f /dev/null
+    networks:
+      - dpi_net
+
+networks:
+  dpi_net:
+    driver: bridge

@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:{{ image_tag }}
+    container_name: {{ _project }}_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "{{ root_password }}"
+      MYSQL_DATABASE: "{{ database }}"
+      MYSQL_USER: "{{ user }}"
+      MYSQL_PASSWORD: "{{ password }}"
+    ports:
+      - "{{ host_port }}:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p{{ root_password }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dpi_net
+
+volumes:
+  mysql_data:
+
+networks:
+  dpi_net:
+    driver: bridge

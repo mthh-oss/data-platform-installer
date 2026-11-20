@@ -1,0 +1,91 @@
+services:
+  ds-postgresql:
+    image: postgres:15
+    container_name: {{ _project }}_ds-postgresql
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: "{{ meta_password }}"
+      POSTGRES_DB: dolphinscheduler
+    volumes:
+      - ds_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d dolphinscheduler"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dpi_net
+
+  ds-zookeeper:
+    image: zookeeper:3.8
+    container_name: {{ _project }}_ds-zookeeper
+    networks:
+      - dpi_net
+
+  ds-api:
+    image: apache/dolphinscheduler-api:{{ image_tag }}
+    container_name: {{ _project }}_ds-api
+    ports:
+      - "{{ api_port }}:12345"
+    environment:
+      DATABASE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ds-postgresql:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "{{ meta_password }}"
+      REGISTRY_ZOOKEEPER_CONNECT_STRING: ds-zookeeper:2181
+    depends_on:
+      - ds-postgresql
+      - ds-zookeeper
+    networks:
+      - dpi_net
+
+  ds-master:
+    image: apache/dolphinscheduler-master:{{ image_tag }}
+    container_name: {{ _project }}_ds-master
+    environment:
+      DATABASE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ds-postgresql:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "{{ meta_password }}"
+      REGISTRY_ZOOKEEPER_CONNECT_STRING: ds-zookeeper:2181
+    depends_on:
+      - ds-postgresql
+      - ds-zookeeper
+    networks:
+      - dpi_net
+
+  ds-worker:
+    image: apache/dolphinscheduler-worker:{{ image_tag }}
+    container_name: {{ _project }}_ds-worker
+    environment:
+      DATABASE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ds-postgresql:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "{{ meta_password }}"
+      REGISTRY_ZOOKEEPER_CONNECT_STRING: ds-zookeeper:2181
+    depends_on:
+      - ds-master
+    networks:
+      - dpi_net
+
+  ds-alert:
+    image: apache/dolphinscheduler-alert-server:{{ image_tag }}
+    container_name: {{ _project }}_ds-alert
+    environment:
+      DATABASE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ds-postgresql:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "{{ meta_password }}"
+      REGISTRY_ZOOKEEPER_CONNECT_STRING: ds-zookeeper:2181
+    depends_on:
+      - ds-postgresql
+      - ds-zookeeper
+    networks:
+      - dpi_net
+
+volumes:
+  ds_pg_data:
+
+networks:
+  dpi_net:
+    driver: bridge

@@ -1,0 +1,15 @@
+# Flink CDC sidecar
+
+This plugin mounts CDC job SQL and keeps a helper container alive.
+
+## Suggested flow
+
+1. Deploy `mysql` + `flink` + `flink_cdc` together.
+2. Wait until Flink UI is healthy on port {{ flink_ui_port }}.
+3. Place CDC connector JARs into the Flink lib volume (or custom image).
+4. Submit `jobs/mysql_cdc_demo.sql` via Flink SQL Client / REST.
+
+MySQL defaults used in SQL:
+- host: `{{ mysql_host }}`
+- port: `{{ mysql_port }}`
+- database: `{{ mysql_database }}`

@@ -1,0 +1,12 @@
+services:
+  example-nginx:
+    image: nginx:{{ image_tag }}
+    container_name: {{ _project }}_example-nginx
+    ports:
+      - "{{ host_port }}:80"
+    networks:
+      - dpi_net
+
+networks:
+  dpi_net:
+    driver: bridge

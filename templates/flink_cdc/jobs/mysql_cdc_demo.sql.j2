@@ -1,0 +1,25 @@
+-- Flink CDC demo SQL skeleton (MySQL -> print)
+-- Adjust connector JARs / versions for your Flink image before submitting.
+
+CREATE TABLE mysql_source (
+  id BIGINT,
+  name STRING,
+  PRIMARY KEY (id) NOT ENFORCED
+) WITH (
+  'connector' = 'mysql-cdc',
+  'hostname' = '{{ mysql_host }}',
+  'port' = '{{ mysql_port }}',
+  'username' = '{{ mysql_user }}',
+  'password' = '{{ mysql_password }}',
+  'database-name' = '{{ mysql_database }}',
+  'table-name' = '{{ source_table }}'
+);
+
+CREATE TABLE print_sink (
+  id BIGINT,
+  name STRING
+) WITH (
+  'connector' = 'print'
+);
+
+INSERT INTO print_sink SELECT * FROM mysql_source;
